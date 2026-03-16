@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartMapp.Net/SmartMapp.Net.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartMapp.Net.Tests.Unit/SmartMapp.Net.Tests.Unit.csproj" />
+  </Folder>
+</Solution>
