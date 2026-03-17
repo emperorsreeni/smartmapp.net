@@ -10,10 +10,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Authors>SmartMapp.Net Contributors</Authors>
+    <Authors>Sreenivasan</Authors>
     <Company>SmartMapp.Net</Company>
     <Product>SmartMapp.Net</Product>
-    <Copyright>Copyright (c) SmartMapp.Net Contributors. All rights reserved.</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
