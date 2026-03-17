@@ -15,9 +15,6 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet-version: ['8.0.x', '10.0.x']
 
     steps:
     - name: Checkout
@@ -26,7 +23,9 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: ${{ matrix.dotnet-version }}
+        dotnet-version: |
+          8.0.x
+          10.0.x
 
     - name: Restore
       run: dotnet restore
@@ -43,7 +42,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nuget-packages-${{ matrix.dotnet-version }}
+        name: nuget-packages
         path: ./artifacts/*.nupkg
         if-no-files-found: warn
 
@@ -51,6 +50,6 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: test-results-${{ matrix.dotnet-version }}
+        name: test-results
         path: '**/*.trx'
         if-no-files-found: warn

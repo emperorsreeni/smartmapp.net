@@ -60,6 +60,53 @@ public sealed record ConventionMatch
     public static ConventionMatch CustomProvider(Type providerType)
         => new() { ConventionName = $"CustomProvider:{providerType.Name}", OriginMemberPath = "", IsExplicit = true, Confidence = 1.0 };
 
+    /// <summary>
+    /// Creates a match representing a case-normalized property name match.
+    /// </summary>
+    /// <param name="path">The origin member path.</param>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "CaseNormalized"</c>.</returns>
+    public static ConventionMatch CaseNormalized(string path)
+        => new() { ConventionName = "CaseNormalized", OriginMemberPath = path, Confidence = 0.9 };
+
+    /// <summary>
+    /// Creates a match representing an unflattened (reverse-flattened) property path match.
+    /// </summary>
+    /// <param name="path">The origin member path.</param>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "Unflattening"</c>.</returns>
+    public static ConventionMatch Unflattened(string path)
+        => new() { ConventionName = "Unflattening", OriginMemberPath = path, Confidence = 1.0 };
+
+    /// <summary>
+    /// Creates a match representing a prefix-dropping match.
+    /// </summary>
+    /// <param name="path">The origin member path.</param>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "PrefixDropping"</c>.</returns>
+    public static ConventionMatch PrefixDropped(string path)
+        => new() { ConventionName = "PrefixDropping", OriginMemberPath = path, Confidence = 0.85 };
+
+    /// <summary>
+    /// Creates a match representing a method-to-property match.
+    /// </summary>
+    /// <param name="path">The origin method name (e.g., "GetFullName()").</param>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "MethodToProperty"</c>.</returns>
+    public static ConventionMatch MethodToProperty(string path)
+        => new() { ConventionName = "MethodToProperty", OriginMemberPath = path, Confidence = 0.95 };
+
+    /// <summary>
+    /// Creates a match representing an abbreviation expansion match.
+    /// </summary>
+    /// <param name="path">The origin member path.</param>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "Abbreviation"</c>.</returns>
+    public static ConventionMatch Abbreviation(string path)
+        => new() { ConventionName = "Abbreviation", OriginMemberPath = path, Confidence = 0.8 };
+
+    /// <summary>
+    /// Creates a match representing no convention match (member skipped).
+    /// </summary>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "None"</c> and zero confidence.</returns>
+    public static ConventionMatch None()
+        => new() { ConventionName = "None", OriginMemberPath = "", Confidence = 0.0 };
+
     /// <inheritdoc />
     public override string ToString() => IsExplicit
         ? $"{ConventionName}"
