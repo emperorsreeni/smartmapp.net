@@ -8,6 +8,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Sprint 3: Built-in Type Transformers
+
+- **`TypeTransformerRegistry`** — central transformer lookup and storage with exact-match dictionary + open transformer `CanTransform` scan with cached results. Thread-safe via `ConcurrentDictionary`. Supports `Register<TOrigin, TTarget>`, `RegisterOpen`, `GetTransformer`, `HasTransformer`, `GetRegisteredPairs`, `Clear`, and `ClearOpen`.
+- **`TypeTransformerRegistryDefaults.RegisterDefaults()`** — bulk-registers all 20+ built-in transformers (15 exact-match + 10 open). Idempotent on re-call.
+- **`ParsableTransformer`** — open transformer: `string` → any `IParsable<T>` (.NET 7+) or `TypeConverter`-compatible type (`netstandard2.1` fallback). Cached parse delegates per target type.
+- **`ToStringTransformer`** — open transformer: any `T` → `string` via `ToString()` with `IFormattable` culture-aware formatting. Lowest-priority open transformer.
+- **`DateTimeToDateTimeOffsetTransformer`** — respects `DateTimeKind` (Utc/Local/Unspecified).
+- **`DateTimeOffsetToDateTimeTransformer`** — extracts `UtcDateTime`.
+- **`DateTimeToDateOnlyTransformer`** / **`DateTimeToTimeOnlyTransformer`** / **`DateOnlyToDateTimeTransformer`** / **`TimeOnlyToTimeSpanTransformer`** — `#if NET6_0_OR_GREATER` guarded.
+- **`StringToDateTimeTransformer`** — `DateTime.TryParse` with `InvariantCulture`; exact-match precedence over `ParsableTransformer`.
+- **`EnumToStringTransformer`** — open: `Enum` → `string` with optional `[Description]` attribute support. Handles `[Flags]`.
+- **`StringToEnumTransformer`** — open: `string` → `Enum` with case-insensitive parse and fallback value support.
+- **`EnumToEnumTransformer`** — open: `Enum` → `Enum` by name (default) or by value. Supports `[Flags]` split-by-comma. Cached converters per `TypePair`.
+- **`EnumTransformerOptions`** — `Strategy`, `CaseInsensitive`, `UseDescriptionAttribute`, `FallbackValue<T>()`.
+- **`EnumMappingStrategy`** — `ByName`, `ByValue`, `ByAttribute`.
+- **`GuidToStringTransformer`** / **`StringToGuidTransformer`** — `Guid` ↔ `string` ("D" format).
+- **`StringToUriTransformer`** / **`UriToStringTransformer`** — `string` ↔ `Uri` (`UriKind.RelativeOrAbsolute`, `OriginalString`).
+- **`BoolToIntTransformer`** / **`IntToBoolTransformer`** — `bool` ↔ `int`.
+- **`NullableWrapTransformer`** / **`NullableUnwrapTransformer`** — open: `T` ↔ `Nullable<T>` wrap/unwrap.
+- **`ImplicitExplicitOperatorTransformer`** — open: detects `op_Implicit`/`op_Explicit` operators via reflection, compiles to `Func<object, object>` via expression trees. Prefers implicit. `AllowExplicit` configuration.
+- **`ByteArrayToBase64Transformer`** / **`Base64ToByteArrayTransformer`** — `byte[]` ↔ `string` (Base64).
+- **`JsonElementToObjectTransformer`** / **`ObjectToJsonElementTransformer`** — open: `JsonElement` ↔ `T` via `System.Text.Json`.
+- **`StringTransformationOptions`** — `TrimAll`, `NullToEmpty`, `Apply(Func<string, string>)`, `Process(string?)`.
+- **`StringPostProcessor`** — `ITypeTransformer<string, string>` post-processing transformer applying `StringTransformationOptions`.
+- **`SmartMappException`** — base exception for all SmartMapp.Net library exceptions. Inherits `InvalidOperationException`.
+- **`TransformationException`** — custom exception inheriting `SmartMappException` with `OriginValue`, `OriginType`, `TargetType` diagnostic properties.
+
+### Test Coverage
+
+- 150+ new transformer tests (378 total across project).
+- Test fixtures in `TestTypes/TransformerTestTypes.cs` covering: `Money` (implicit/explicit operators), `Temperature` (implicit preference), `Percentage` (target-type operator), `NoOperatorType`, `OrderStatus`/`OrderStatusDto`/`PaymentStatus` enums, `FilePermissions`/`FilePermissionsDto` `[Flags]` enums, `JsonTestDto`, `TransformerPropertySource`/`TransformerPropertyTarget` (Sprint 4 reuse).
+- Comprehensive §7.1 golden test verifying all 26 type pair lookups resolve to correct transformer types.
+- Thread-safety test with `Parallel.For` concurrent lookups.
+- `RegisterDefaults` idempotency test.
+
+---
+
 ### Added — Sprint 2: Convention Engine
 
 - **`IPropertyConvention`** interface — contract for property-level conventions with `Priority` and `TryLink`.
