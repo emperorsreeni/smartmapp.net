@@ -79,6 +79,14 @@ public sealed record Blueprint
     public Action<object, object>? OnMapped { get; init; }
 
     /// <summary>
+    /// Gets a value indicating whether missing <c>required</c> members should cause a compilation error.
+    /// When <c>true</c> (strict), throws <see cref="Compilation.MappingCompilationException"/> if required members are unmapped.
+    /// When <c>false</c> (default), missing required members are silently ignored.
+    /// Only effective on .NET 7+.
+    /// </summary>
+    public bool StrictRequiredMembers { get; init; }
+
+    /// <summary>
     /// Creates an empty blueprint for the given type pair. Useful for test scaffolding.
     /// </summary>
     /// <param name="pair">The type pair.</param>
