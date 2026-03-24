@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using SmartMapp.Net.Abstractions;
 using SmartMapp.Net.Caching;
+using SmartMapp.Net.Collections;
 using SmartMapp.Net.Discovery;
 
 namespace SmartMapp.Net.Compilation;
@@ -198,15 +199,16 @@ internal sealed class BlueprintCompiler
             && pi.SetMethod is not null
             && IsInitOnlySetter(pi.SetMethod));
 
-        // Check if we have non-init properties, conditions, fallbacks, or complex types
-        // that require sequential assignment
+        // Check if we have non-init properties, conditions, fallbacks, complex types, or collections
+        // that require sequential assignment (MemberInit doesn't support nested mapping delegates)
         var hasSequentialNeeds = blueprint.Links.Any(l =>
             !l.IsSkipped
             && !consumed.Contains(l.TargetMember.Name)
             && (l.Condition is not null
                 || l.PreCondition is not null
                 || l.Fallback is not null
-                || IsComplexTargetMember(l)));
+                || IsComplexTargetMember(l)
+                || IsCollectionTargetMember(l)));
 
         if (hasSequentialNeeds || blueprint.OnMapping is not null || blueprint.OnMapped is not null)
         {
@@ -416,5 +418,15 @@ internal sealed class BlueprintCompiler
     {
         var memberType = PropertyAssignmentBuilder.GetMemberType(link.TargetMember);
         return ComplexTypeDetector.IsComplexType(memberType);
+    }
+
+    /// <summary>
+    /// Checks whether a property link targets a collection type that requires
+    /// <see cref="CollectionMapper"/> dispatch (not available via MemberInit).
+    /// </summary>
+    private static bool IsCollectionTargetMember(PropertyLink link)
+    {
+        var memberType = PropertyAssignmentBuilder.GetMemberType(link.TargetMember);
+        return CollectionCategoryResolver.Resolve(memberType) != CollectionCategory.Unknown;
     }
 }
