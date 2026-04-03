@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using SmartMapp.Net.Abstractions;
+using SmartMapp.Net.Collections;
 
 namespace SmartMapp.Net.Compilation;
 
@@ -187,6 +188,15 @@ internal sealed class PropertyAssignmentBuilder
             return null;
 
         var originType = valueExpr.Type;
+
+        // Collection mapping: dispatch to CollectionMapper when both sides are collections
+        if (nestedMapper is not null
+            && CollectionCategoryResolver.Resolve(targetMemberType) != CollectionCategory.Unknown
+            && CollectionCategoryResolver.Resolve(originType) != CollectionCategory.Unknown)
+        {
+            return CollectionMapper.BuildCollectionExpression(
+                valueExpr, originType, targetMemberType, scopeParam, nestedMapper);
+        }
 
         // Check if this is a complex type that needs recursive mapping.
         // This includes same-type complex objects (deep copy) and cross-type mappings.

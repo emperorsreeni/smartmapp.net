@@ -291,4 +291,76 @@ public class EndToEndCompilationTests
         result.Category.Should().Be(string.Empty); // condition false, not assigned
         hookValues.Should().ContainInOrder("mapping", "mapped");
     }
+
+    // ═══════════════════════════════════════════════════
+    // E2E: All 3 construction strategies verified
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void EndToEnd_ParameterlessStrategy_FlatDto()
+    {
+        var blueprint = BuildBlueprint<FlatOrder, FlatOrderDto>();
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new FlatOrder { Id = 1, Name = "Parameterless" };
+        var result = (FlatOrderDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.Name.Should().Be("Parameterless");
+    }
+
+    [Fact]
+    public void EndToEnd_PrimaryCtorStrategy_Record()
+    {
+        var blueprint = BuildBlueprint<FlatOrder, RecordOrderDto>();
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new FlatOrder { Id = 2, Name = "Record", Total = 99m };
+        var result = (RecordOrderDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(2);
+        result.Name.Should().Be("Record");
+        result.Total.Should().Be(99m);
+    }
+
+    [Fact]
+    public void EndToEnd_FactoryStrategy_UsesFactory()
+    {
+        var originModel = _typeModelCache.GetOrAdd<FlatOrder>();
+        var targetModel = _typeModelCache.GetOrAdd<FlatOrderDto>();
+        var links = new List<PropertyLink>();
+
+        foreach (var targetMember in targetModel.WritableMembers)
+        {
+            var originMember = originModel.GetMember(targetMember.Name);
+            if (originMember is null) continue;
+            links.Add(new PropertyLink
+            {
+                TargetMember = targetMember.MemberInfo,
+                Provider = new DirectMemberProvider(originMember.MemberInfo),
+                LinkedBy = ConventionMatch.ExactName(originMember.Name),
+            });
+        }
+
+        var factoryUsed = false;
+        var blueprint = new Blueprint
+        {
+            OriginType = typeof(FlatOrder),
+            TargetType = typeof(FlatOrderDto),
+            Links = links,
+            TargetFactory = _ =>
+            {
+                factoryUsed = true;
+                return new FlatOrderDto();
+            },
+        };
+
+        var del = _compiler.Compile(blueprint);
+        var origin = new FlatOrder { Id = 3, Name = "Factory" };
+        var result = (FlatOrderDto)del(origin, new MappingScope());
+
+        factoryUsed.Should().BeTrue();
+        result.Id.Should().Be(3);
+        result.Name.Should().Be("Factory");
+    }
 }

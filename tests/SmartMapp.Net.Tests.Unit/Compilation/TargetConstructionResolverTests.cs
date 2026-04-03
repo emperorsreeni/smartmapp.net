@@ -161,6 +161,18 @@ public class TargetConstructionResolverTests
     }
 
     [Fact]
+    public void ResolveStrategy_PlainStruct_ReturnsParameterless()
+    {
+        var model = _cache.GetOrAdd<PointStructDto>();
+        var blueprint = Blueprint.Empty(TypePair.Of<PointStruct, PointStructDto>());
+
+        var strategy = _resolver.ResolveStrategy(model, blueprint);
+
+        // Plain structs have an implicit parameterless constructor
+        strategy.Should().Be(ConstructionStrategy.Parameterless);
+    }
+
+    [Fact]
     public void IsTypeCompatible_SameType_ReturnsTrue()
     {
         TargetConstructionResolver.IsTypeCompatible(typeof(int), typeof(int)).Should().BeTrue();

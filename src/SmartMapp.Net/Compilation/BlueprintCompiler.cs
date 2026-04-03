@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using SmartMapp.Net.Abstractions;
 using SmartMapp.Net.Caching;
+using SmartMapp.Net.Collections;
 using SmartMapp.Net.Discovery;
 
 namespace SmartMapp.Net.Compilation;
@@ -198,15 +199,16 @@ internal sealed class BlueprintCompiler
             && pi.SetMethod is not null
             && IsInitOnlySetter(pi.SetMethod));
 
-        // Check if we have non-init properties, conditions, fallbacks, or complex types
-        // that require sequential assignment
+        // Check if we have non-init properties, conditions, fallbacks, complex types, or collections
+        // that require sequential assignment (MemberInit doesn't support nested mapping delegates)
         var hasSequentialNeeds = blueprint.Links.Any(l =>
             !l.IsSkipped
             && !consumed.Contains(l.TargetMember.Name)
             && (l.Condition is not null
                 || l.PreCondition is not null
                 || l.Fallback is not null
-                || IsComplexTargetMember(l)));
+                || IsComplexTargetMember(l)
+                || IsCollectionTargetMember(l)));
 
         if (hasSequentialNeeds || blueprint.OnMapping is not null || blueprint.OnMapped is not null)
         {
@@ -256,7 +258,7 @@ internal sealed class BlueprintCompiler
         bool trackReferences)
     {
         // Build the core mapping call via delegate cache
-        var mapCall = BuildDelegateCacheCall(originValueExpr, originType, targetType, scopeParam);
+        var mapCall = BuildDelegateCacheCall(originValueExpr, originType, targetType, scopeParam, trackReferences);
 
         // Wrap with depth limit
         mapCall = DepthLimitGuard.WrapWithDepthCheck(mapCall, scopeParam, targetType);
@@ -295,7 +297,8 @@ internal sealed class BlueprintCompiler
         Expression originValueExpr,
         Type originType,
         Type targetType,
-        ParameterExpression scopeParam)
+        ParameterExpression scopeParam,
+        bool trackReferences)
     {
         // We capture the delegate cache and create a nested call:
         // ((Func<object, MappingScope, object>)_delegateCache.GetOrCompile(pair, factory))(origin, scope.CreateChild())
@@ -311,7 +314,7 @@ internal sealed class BlueprintCompiler
         {
             var del = _delegateCache.GetOrCompile(nestedPair, tp =>
             {
-                var nestedBlueprint = ResolveNestedBlueprint(tp);
+                var nestedBlueprint = ResolveNestedBlueprint(tp, trackReferences);
                 return Compile(nestedBlueprint);
             });
             return del(origin, scope);
@@ -331,7 +334,7 @@ internal sealed class BlueprintCompiler
     /// Resolves a blueprint for a nested type pair. Tries the external resolver first,
     /// then falls back to auto-discovery via exact name matching.
     /// </summary>
-    private Blueprint ResolveNestedBlueprint(TypePair pair)
+    private Blueprint ResolveNestedBlueprint(TypePair pair, bool trackReferences)
     {
         if (_blueprintResolver is not null)
         {
@@ -340,14 +343,14 @@ internal sealed class BlueprintCompiler
                 return resolved;
         }
 
-        return BuildAutoDiscoveredBlueprint(pair);
+        return BuildAutoDiscoveredBlueprint(pair, trackReferences);
     }
 
     /// <summary>
     /// Builds a minimal blueprint for a nested type pair by auto-discovering property links
     /// via exact name matching. Used when no explicit blueprint is registered for the pair.
     /// </summary>
-    private Blueprint BuildAutoDiscoveredBlueprint(TypePair pair)
+    private Blueprint BuildAutoDiscoveredBlueprint(TypePair pair, bool trackReferences)
     {
         var originModel = _typeModelCache.GetOrAdd(pair.OriginType);
         var targetModel = _typeModelCache.GetOrAdd(pair.TargetType);
@@ -384,6 +387,7 @@ internal sealed class BlueprintCompiler
             OriginType = pair.OriginType,
             TargetType = pair.TargetType,
             Links = links,
+            TrackReferences = trackReferences,
         };
     }
 
@@ -416,5 +420,15 @@ internal sealed class BlueprintCompiler
     {
         var memberType = PropertyAssignmentBuilder.GetMemberType(link.TargetMember);
         return ComplexTypeDetector.IsComplexType(memberType);
+    }
+
+    /// <summary>
+    /// Checks whether a property link targets a collection type that requires
+    /// <see cref="CollectionMapper"/> dispatch (not available via MemberInit).
+    /// </summary>
+    private static bool IsCollectionTargetMember(PropertyLink link)
+    {
+        var memberType = PropertyAssignmentBuilder.GetMemberType(link.TargetMember);
+        return CollectionCategoryResolver.Resolve(memberType) != CollectionCategory.Unknown;
     }
 }

@@ -412,6 +412,30 @@ public class BlueprintCompilerTests
         // Should complete without StackOverflowException
     }
 
+    [Fact]
+    public void Compile_CircularRef_TargetTrackedBeforePropertyAssignment()
+    {
+        // Verify back-references point to the SAME target instance (not a copy).
+        // This proves the target is tracked before property assignment starts.
+        var blueprint = BuildBlueprint<SelfRefEmployee, SelfRefEmployeeDto>(trackReferences: true);
+        var del = _compiler.Compile(blueprint);
+
+        var alice = new SelfRefEmployee { Id = 1, Name = "Alice" };
+        var bob = new SelfRefEmployee { Id = 2, Name = "Bob", Manager = alice };
+        alice.Manager = bob; // circular: Alice → Bob → Alice
+
+        var scope = new MappingScope { MaxDepth = 10 };
+        var result = (SelfRefEmployeeDto)del(alice, scope);
+
+        // Alice's manager is Bob
+        result.Manager.Should().NotBeNull();
+        result.Manager!.Name.Should().Be("Bob");
+        // Bob's manager should be the SAME Alice instance (not a new one)
+        // This proves the target was tracked before its properties were assigned
+        result.Manager.Manager.Should().NotBeNull();
+        result.Manager.Manager.Should().BeSameAs(result);
+    }
+
     // ═══════════════════════════════════════════════════
     // Depth limit
     // ═══════════════════════════════════════════════════
@@ -1041,6 +1065,18 @@ public class BlueprintCompilerTests
         var act = () => _compiler.Compile(nonStrictBlueprint);
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Compile_RequiredMembers_StrictMode_MissingRequired_Throws()
+    {
+        // RequiredTargetWithUnmapped has required MandatoryField — no match in SimpleDto
+        var blueprint = BuildBlueprint<SimpleDto, RequiredTargetWithUnmapped>();
+        var strictBlueprint = blueprint with { StrictRequiredMembers = true };
+
+        var act = () => _compiler.Compile(strictBlueprint);
+        act.Should().Throw<MappingCompilationException>()
+            .WithMessage("*MandatoryField*");
+    }
 #endif
 
     // ═══════════════════════════════════════════════════
@@ -1068,6 +1104,365 @@ public class BlueprintCompilerTests
         result.Category.Should().Be("Tech");
     }
 
+    // ═══════════════════════════════════════════════════
+    // 3-level deep nesting (GAP G3)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_NestedObject_3Level_MappedCorrectly()
+    {
+        var blueprint = BuildBlueprint<DeepLevel1, DeepLevel1Dto>(trackReferences: false);
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new DeepLevel1
+        {
+            Value = 1,
+            Child = new DeepLevel2
+            {
+                Value = 2,
+                Child = new DeepLevel3 { Value = 3 },
+            },
+        };
+
+        var result = (DeepLevel1Dto)del(origin, new MappingScope());
+
+        result.Value.Should().Be(1);
+        result.Child.Should().NotBeNull();
+        result.Child!.Value.Should().Be(2);
+        result.Child.Child.Should().NotBeNull();
+        result.Child.Child!.Value.Should().Be(3);
+    }
+
+    [Fact]
+    public void Compile_NestedObject_3Level_NullIntermediate_ReturnsNull()
+    {
+        var blueprint = BuildBlueprint<DeepLevel1, DeepLevel1Dto>(trackReferences: false);
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new DeepLevel1
+        {
+            Value = 1,
+            Child = new DeepLevel2 { Value = 2, Child = null },
+        };
+
+        var result = (DeepLevel1Dto)del(origin, new MappingScope());
+
+        result.Child.Should().NotBeNull();
+        result.Child!.Child.Should().BeNull();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Enum → String conversion (GAP G5)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_EnumToString_ConvertsCorrectly()
+    {
+        var blueprint = BuildBlueprint<EnumOrigin, EnumToStringDto>();
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new EnumOrigin { Id = 1, Status = OrderStatus.Shipped };
+        var result = (EnumToStringDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.Status.Should().Be("Shipped");
+    }
+
+    [Fact]
+    public void Compile_StringToEnum_ParsesCorrectly()
+    {
+        var blueprint = BuildBlueprint<StringToEnumOrigin, StringToEnumDto>();
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new StringToEnumOrigin { Id = 2, Status = "Shipped" };
+        var result = (StringToEnumDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(2);
+        result.Status.Should().Be(OrderStatus.Shipped);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // TransformerLookup integration (GAP G7)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_TransformerLookup_UsedForMismatchedTypes()
+    {
+        var transformer = new DateTimeToDateTimeOffsetTransformer();
+        ITypeTransformer? TransformerLookup(Type origin, Type target)
+        {
+            if (origin == typeof(DateTime) && target == typeof(DateTimeOffset))
+                return transformer;
+            return null;
+        }
+
+        var compilerWithLookup = new BlueprintCompiler(
+            _typeModelCache, _delegateCache, transformerLookup: TransformerLookup);
+
+        var blueprint = BuildBlueprint<TransformerOrigin, TransformerDto>();
+        var del = compilerWithLookup.Compile(blueprint);
+
+        var dt = new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+        var origin = new TransformerOrigin { Id = 1, CreatedAt = dt };
+        var result = (TransformerDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.CreatedAt.Should().Be(new DateTimeOffset(dt));
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Condition true → property IS assigned (GAP G8)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_ConditionTrue_PropertyAssigned()
+    {
+        var originModel = _typeModelCache.GetOrAdd<FlatOrder>();
+        var targetModel = _typeModelCache.GetOrAdd<FlatOrderDto>();
+        var links = new List<PropertyLink>();
+
+        foreach (var targetMember in targetModel.WritableMembers)
+        {
+            var originMember = originModel.GetMember(targetMember.Name);
+            if (originMember is null) continue;
+
+            links.Add(new PropertyLink
+            {
+                TargetMember = targetMember.MemberInfo,
+                Provider = new DirectMemberProvider(originMember.MemberInfo),
+                LinkedBy = ConventionMatch.ExactName(originMember.Name),
+                Condition = targetMember.Name == "Name"
+                    ? (Func<object, bool>)(_ => true)
+                    : null,
+            });
+        }
+
+        var blueprint = new Blueprint
+        {
+            OriginType = typeof(FlatOrder),
+            TargetType = typeof(FlatOrderDto),
+            Links = links,
+        };
+
+        var del = _compiler.Compile(blueprint);
+        var origin = new FlatOrder { Id = 42, Name = "ShouldBeAssigned" };
+        var result = (FlatOrderDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(42);
+        result.Name.Should().Be("ShouldBeAssigned");
+    }
+
+    // ═══════════════════════════════════════════════════
+    // ExpressionMappingCompiler — strongly typed projection (GAP G6)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void ExpressionMappingCompiler_ProducesStronglyTypedProjection()
+    {
+        var exprCompiler = new ExpressionMappingCompiler(_typeModelCache, _delegateCache);
+        var blueprint = BuildBlueprint<FlatOrder, FlatOrderDto>();
+
+        var projectionExpr = exprCompiler.CompileToProjectionExpression<FlatOrder, FlatOrderDto>(blueprint);
+
+        projectionExpr.Should().NotBeNull();
+        projectionExpr.Parameters.Should().HaveCount(1);
+        projectionExpr.Parameters[0].Type.Should().Be(typeof(FlatOrder));
+        projectionExpr.ReturnType.Should().Be(typeof(FlatOrderDto));
+
+        // Compile and execute to verify correctness
+        var compiled = projectionExpr.Compile();
+        var origin = new FlatOrder { Id = 99, Name = "Projection" };
+        var result = compiled(origin);
+
+        result.Id.Should().Be(99);
+        result.Name.Should().Be("Projection");
+    }
+
+    [Fact]
+    public void ExpressionMappingCompiler_ProjectionUsableWithIQueryable()
+    {
+        var exprCompiler = new ExpressionMappingCompiler(_typeModelCache, _delegateCache);
+        var blueprint = BuildBlueprint<FlatOrder, FlatOrderDto>();
+
+        var projectionExpr = exprCompiler.CompileToProjectionExpression<FlatOrder, FlatOrderDto>(blueprint);
+
+        // Simulate IQueryable usage
+        var source = new List<FlatOrder>
+        {
+            new() { Id = 1, Name = "A" },
+            new() { Id = 2, Name = "B" },
+        }.AsQueryable();
+
+        var projected = source.Select(projectionExpr).ToList();
+
+        projected.Should().HaveCount(2);
+        projected[0].Id.Should().Be(1);
+        projected[0].Name.Should().Be("A");
+        projected[1].Id.Should().Be(2);
+        projected[1].Name.Should().Be("B");
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Explicit PropertyLink.Transformer (S4-T04 AC)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_ExplicitTransformerOnLink_UsedForConversion()
+    {
+        var originModel = _typeModelCache.GetOrAdd<ExplicitTransformerOrigin>();
+        var targetModel = _typeModelCache.GetOrAdd<ExplicitTransformerTarget>();
+        var links = new List<PropertyLink>();
+
+        foreach (var targetMember in targetModel.WritableMembers)
+        {
+            var originMember = originModel.GetMember(targetMember.Name);
+            if (originMember is null) continue;
+
+            ITypeTransformer? transformer = null;
+            if (targetMember.Name == "Code")
+                transformer = new IntToStringTransformer();
+
+            links.Add(new PropertyLink
+            {
+                TargetMember = targetMember.MemberInfo,
+                Provider = new DirectMemberProvider(originMember.MemberInfo),
+                LinkedBy = ConventionMatch.ExactName(originMember.Name),
+                Transformer = transformer,
+            });
+        }
+
+        var blueprint = new Blueprint
+        {
+            OriginType = typeof(ExplicitTransformerOrigin),
+            TargetType = typeof(ExplicitTransformerTarget),
+            Links = links,
+        };
+
+        var del = _compiler.Compile(blueprint);
+        var origin = new ExplicitTransformerOrigin { Id = 1, Code = 42 };
+        var result = (ExplicitTransformerTarget)del(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.Code.Should().Be("42");
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Plain struct mapping (S4-T07 AC: struct detection)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_PlainStruct_MappedCorrectly()
+    {
+        var blueprint = BuildBlueprint<PointStruct, PointStructDto>();
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new PointStruct { X = 10, Y = 20 };
+        var result = (PointStructDto)del(origin, new MappingScope());
+
+        result.X.Should().Be(10);
+        result.Y.Should().Be(20);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Child scope created per nested call (S4-T07 AC)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_NestedMapping_ChildScopeCreated_DepthIncrements()
+    {
+        // Verify depth increments across nested levels by using a depth limit.
+        // DeepLevel1 → DeepLevel2 → DeepLevel3: with maxDepth=1, top-level maps (no check),
+        // nested L2 parent check depth 0<1 passes (maps L2), L3 parent check depth 1>=1 stops.
+        var blueprint = BuildBlueprint<DeepLevel1, DeepLevel1Dto>(trackReferences: false, maxDepth: 1);
+        var del = _compiler.Compile(blueprint);
+
+        var origin = new DeepLevel1
+        {
+            Value = 1,
+            Child = new DeepLevel2
+            {
+                Value = 2,
+                Child = new DeepLevel3 { Value = 3 },
+            },
+        };
+
+        var scope = new MappingScope { MaxDepth = 1 };
+        var result = (DeepLevel1Dto)del(origin, scope);
+
+        result.Value.Should().Be(1);
+        result.Child.Should().NotBeNull();
+        result.Child!.Value.Should().Be(2);
+        // Level 3 stopped by depth limit — proves CreateChild() incremented depth
+        result.Child.Child.Should().BeNull();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Depth limit 3 stops at level 4 (S4-T08 AC exact wording)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_DepthLimit3_StopsAtLevel4()
+    {
+        // MaxDepth=3: top-level maps (no check), then 3 nested calls succeed before stopping.
+        // L1(top) → L2(depth check 0<3, maps) → L3(depth check 1<3, maps) → L4(depth check 2<3, maps) → L5(depth check 3>=3, stops)
+        var blueprint = BuildBlueprint<SelfRefEmployee, SelfRefEmployeeDto>(trackReferences: false, maxDepth: 3);
+        var del = _compiler.Compile(blueprint);
+
+        var l5 = new SelfRefEmployee { Id = 5, Name = "L5", Manager = null };
+        var l4 = new SelfRefEmployee { Id = 4, Name = "L4", Manager = l5 };
+        var l3 = new SelfRefEmployee { Id = 3, Name = "L3", Manager = l4 };
+        var l2 = new SelfRefEmployee { Id = 2, Name = "L2", Manager = l3 };
+        var l1 = new SelfRefEmployee { Id = 1, Name = "L1", Manager = l2 };
+
+        var scope = new MappingScope { MaxDepth = 3 };
+        var result = (SelfRefEmployeeDto)del(l1, scope);
+
+        result.Id.Should().Be(1);
+        result.Manager.Should().NotBeNull();
+        result.Manager!.Id.Should().Be(2);
+        result.Manager.Manager.Should().NotBeNull();
+        result.Manager.Manager!.Id.Should().Be(3);
+        result.Manager.Manager.Manager.Should().NotBeNull();
+        result.Manager.Manager.Manager!.Id.Should().Be(4);
+        // Level 5 should be stopped by depth limit — stops at level 4
+        result.Manager.Manager.Manager.Manager.Should().BeNull();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // TransformerLookup propagated to nested auto-discovered blueprints (S4-T04/T07)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public void Compile_TransformerLookup_PropagatedToNestedBlueprints()
+    {
+        var transformer = new DateTimeToDateTimeOffsetTransformer();
+        ITypeTransformer? TransformerLookup(Type origin, Type target)
+        {
+            if (origin == typeof(DateTime) && target == typeof(DateTimeOffset))
+                return transformer;
+            return null;
+        }
+
+        var compilerWithLookup = new BlueprintCompiler(
+            _typeModelCache, _delegateCache, transformerLookup: TransformerLookup);
+
+        var blueprint = BuildBlueprint<ParentWithNestedTransform, ParentWithNestedTransformDto>();
+        var del = compilerWithLookup.Compile(blueprint);
+
+        var dt = new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+        var origin = new ParentWithNestedTransform
+        {
+            Id = 1,
+            Child = new ChildWithDateTime { Name = "Child", CreatedAt = dt },
+        };
+        var result = (ParentWithNestedTransformDto)del(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.Child.Should().NotBeNull();
+        result.Child.Name.Should().Be("Child");
+        result.Child.CreatedAt.Should().Be(new DateTimeOffset(dt));
+    }
+
     // ── Helpers ──
 
     private IReadOnlyList<PropertyLink> BuildLinks<TOrigin, TTarget>()
@@ -1090,5 +1485,25 @@ public class BlueprintCompilerTests
         }
 
         return links;
+    }
+
+    // ── Test transformers ──
+
+    private sealed class DateTimeToDateTimeOffsetTransformer : ITypeTransformer<DateTime, DateTimeOffset>
+    {
+        public bool CanTransform(Type originType, Type targetType)
+            => originType == typeof(DateTime) && targetType == typeof(DateTimeOffset);
+
+        public DateTimeOffset Transform(DateTime origin, MappingScope scope)
+            => new DateTimeOffset(origin);
+    }
+
+    private sealed class IntToStringTransformer : ITypeTransformer<int, string>
+    {
+        public bool CanTransform(Type originType, Type targetType)
+            => originType == typeof(int) && targetType == typeof(string);
+
+        public string Transform(int origin, MappingScope scope)
+            => origin.ToString();
     }
 }

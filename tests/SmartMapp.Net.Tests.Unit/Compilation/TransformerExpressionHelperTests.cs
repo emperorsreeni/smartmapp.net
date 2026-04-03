@@ -93,6 +93,30 @@ public class TransformerExpressionHelperTests
         act.Should().Throw<MappingCompilationException>();
     }
 
+    [Fact]
+    public void EnumToString_CallsToString()
+    {
+        var param = Expression.Parameter(typeof(DayOfWeek), "value");
+
+        var result = TransformerExpressionHelper.BuildTransformExpression(
+            param, typeof(DayOfWeek), typeof(string), _scopeParam, null);
+
+        var lambda = Expression.Lambda<Func<DayOfWeek, string>>(result, param).Compile();
+        lambda(DayOfWeek.Friday).Should().Be("Friday");
+    }
+
+    [Fact]
+    public void StringToEnum_ParsesCorrectly()
+    {
+        var param = Expression.Parameter(typeof(string), "value");
+
+        var result = TransformerExpressionHelper.BuildTransformExpression(
+            param, typeof(string), typeof(DayOfWeek), _scopeParam, null);
+
+        var lambda = Expression.Lambda<Func<string, DayOfWeek>>(result, param).Compile();
+        lambda("Monday").Should().Be(DayOfWeek.Monday);
+    }
+
     // Test transformer
     private sealed class TestIntToStringTransformer : ITypeTransformer<int, string>
     {
