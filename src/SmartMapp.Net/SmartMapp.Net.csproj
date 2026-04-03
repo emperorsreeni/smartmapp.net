@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SmartMapp.Net.Tests.Unit" />
+    <InternalsVisibleTo Include="SmartMapp.Net.Benchmarks" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

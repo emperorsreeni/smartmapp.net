@@ -154,7 +154,7 @@ internal sealed class TargetConstructionResolver
 
             foreach (var param in ctor.Parameters)
             {
-                var originMember = originModel.GetMember(param.Name!);
+                var originMember = param.Name is not null ? originModel.GetMember(param.Name) : null;
                 if (originMember is not null && IsTypeCompatible(originMember.MemberType, param.ParameterType))
                 {
                     score++;
@@ -195,7 +195,7 @@ internal sealed class TargetConstructionResolver
         for (var i = 0; i < ctor.ParameterCount; i++)
         {
             var param = ctor.Parameters[i];
-            var originMember = originModel.GetMember(param.Name!);
+            var originMember = param.Name is not null ? originModel.GetMember(param.Name) : null;
 
             if (originMember is not null && IsTypeCompatible(originMember.MemberType, param.ParameterType))
             {

@@ -249,6 +249,7 @@ internal sealed class BlueprintCompiler
     /// <summary>
     /// Builds an expression for mapping a nested complex-type property.
     /// Includes depth check, null check, and circular reference tracking.
+    /// If the nested types are collections, dispatches to <see cref="CollectionMapper"/> instead.
     /// </summary>
     private Expression BuildNestedMappingExpression(
         Expression originValueExpr,
@@ -257,6 +258,16 @@ internal sealed class BlueprintCompiler
         ParameterExpression scopeParam,
         bool trackReferences)
     {
+        // If both origin and target are collection types, delegate to CollectionMapper
+        // rather than trying to build an object-mapping blueprint for collections.
+        if (CollectionCategoryResolver.Resolve(targetType) != CollectionCategory.Unknown
+            && CollectionCategoryResolver.Resolve(originType) != CollectionCategory.Unknown)
+        {
+            return CollectionMapper.BuildCollectionExpression(
+                originValueExpr, originType, targetType, scopeParam,
+                (expr, oType, tType, scope) => BuildNestedMappingExpression(expr, oType, tType, scope, trackReferences));
+        }
+
         // Build the core mapping call via delegate cache
         var mapCall = BuildDelegateCacheCall(originValueExpr, originType, targetType, scopeParam, trackReferences);
 

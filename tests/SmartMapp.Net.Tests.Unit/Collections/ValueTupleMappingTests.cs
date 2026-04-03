@@ -72,6 +72,35 @@ public sealed class ValueTupleMappingTests
     }
 
     [Fact]
+    public void UnnamedTuple_MapsToObjectByPosition()
+    {
+        var tupleType = typeof((int, string));
+        var sourceParam = System.Linq.Expressions.Expression.Parameter(tupleType, "source");
+        var scopeParam = System.Linq.Expressions.Expression.Parameter(typeof(MappingScope), "scope");
+
+        var body = ValueTupleMapper.BuildTupleToObject(sourceParam, typeof(PersonForUnnamedTuple), scopeParam);
+        var lambda = System.Linq.Expressions.Expression.Lambda<Func<(int, string), MappingScope, PersonForUnnamedTuple>>(
+            body, sourceParam, scopeParam);
+        var compiled = lambda.Compile();
+
+        var result = compiled((99, "Eve"), new MappingScope());
+
+        result.Id.Should().Be(99);
+        result.Name.Should().Be("Eve");
+    }
+
+    [Fact]
+    public void ValueTuple_IsValueType_CannotBeNull()
+    {
+        // ValueTuple<...> is a struct — null source is not possible at the CLR level.
+        // This test documents that the IsValueTuple check correctly identifies struct tuples,
+        // confirming the S5-T10 AC "Null dictionary/tuple → null target" is N/A for tuples.
+        var tupleType = typeof((int, string, int));
+        tupleType.IsValueType.Should().BeTrue();
+        ValueTupleMapper.IsValueTuple(tupleType).Should().BeTrue();
+    }
+
+    [Fact]
     public void RoundTrip_TupleToObjectAndBack_PreservesValues()
     {
         var tupleType = typeof((int, string, int));

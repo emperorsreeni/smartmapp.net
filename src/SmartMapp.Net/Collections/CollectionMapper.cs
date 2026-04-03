@@ -34,9 +34,12 @@ internal static class CollectionMapper
     {
         var targetCategory = CollectionCategoryResolver.Resolve(targetType);
 
-        // Dictionary mapping
+        // Dictionary mapping (null check applied inside BuildDictionaryMapping)
         if (targetCategory == CollectionCategory.Dictionary)
-            return BuildDictionaryMapping(sourceExpr, sourceType, targetType, scopeParam, elementMapper);
+        {
+            var dictBody = BuildDictionaryMapping(sourceExpr, sourceType, targetType, scopeParam, elementMapper);
+            return CollectionExpressionHelpers.WrapWithNullCheck(sourceExpr, dictBody, targetType);
+        }
 
         // Element types
         var originElementType = CollectionExpressionHelpers.GetGenericElementType(sourceType);
@@ -307,6 +310,15 @@ internal static class CollectionMapper
         var (targetKeyType, targetValueType) = targetKv.Value;
 
         var dictType = typeof(Dictionary<,>).MakeGenericType(targetKeyType, targetValueType);
+
+        // Fast-path: same key+value types with no complex value mapping → copy constructor
+        var needsKeyMapping = !targetKeyType.IsAssignableFrom(sourceKeyType);
+        var needsValueMapping = !targetValueType.IsAssignableFrom(sourceValueType);
+        if (!needsKeyMapping && !needsValueMapping && !ComplexTypeDetector.IsComplexType(sourceValueType))
+        {
+            return BuildDictionaryCopyFastPath(sourceExpr, dictType, targetType);
+        }
+
         var resultVar = Expression.Variable(dictType, "result");
 
         // Pre-sized allocation
@@ -330,20 +342,17 @@ internal static class CollectionMapper
         var keyProp = kvpType.GetProperty("Key")!;
         var valueProp = kvpType.GetProperty("Value")!;
 
-        var needsKeyMapping = !targetKeyType.IsAssignableFrom(sourceKeyType);
-        var needsValueMapping = !targetValueType.IsAssignableFrom(sourceValueType);
-
         var loop = CollectionExpressionHelpers.BuildForEachLoop(sourceExpr, kvpType, currentExpr =>
         {
             var keyExpr = Expression.Property(currentExpr, keyProp);
             var valueExpr = Expression.Property(currentExpr, valueProp);
 
             Expression mappedKey = needsKeyMapping
-                ? CollectionExpressionHelpers.BuildElementMappingCall(keyExpr, sourceKeyType, targetKeyType, scopeParam, elementMapper)
+                ? BuildMappedElement(keyExpr, sourceKeyType, targetKeyType, scopeParam, elementMapper)
                 : EnsureType(keyExpr, targetKeyType);
 
             Expression mappedValue = needsValueMapping
-                ? CollectionExpressionHelpers.BuildElementMappingCall(valueExpr, sourceValueType, targetValueType, scopeParam, elementMapper)
+                ? BuildMappedElement(valueExpr, sourceValueType, targetValueType, scopeParam, elementMapper)
                 : EnsureType(valueExpr, targetValueType);
 
             return Expression.Call(resultVar, addMethod, mappedKey, mappedValue);
@@ -364,7 +373,27 @@ internal static class CollectionMapper
                 loop,
                 Expression.Convert(resultVar, targetType));
 
-        return CollectionExpressionHelpers.WrapWithNullCheck(sourceExpr, body, targetType);
+        return result;
+    }
+
+    /// <summary>
+    /// Fast-path for same-type dictionaries: <c>new Dictionary&lt;K,V&gt;(source)</c>.
+    /// </summary>
+    private static Expression BuildDictionaryCopyFastPath(Expression sourceExpr, Type dictType, Type targetType)
+    {
+        var args = dictType.GetGenericArguments();
+        var iDictType = typeof(IDictionary<,>).MakeGenericType(args[0], args[1]);
+        var copyCtor = dictType.GetConstructor(new[] { iDictType })!;
+
+        Expression result = Expression.New(copyCtor, Expression.Convert(sourceExpr, iDictType));
+
+        // Cast to interface if needed
+        if (targetType != dictType && targetType.IsAssignableFrom(dictType))
+        {
+            result = Expression.Convert(result, targetType);
+        }
+
+        return result;
     }
 
     // ──────────────────────── ImmutableList ────────────────────────
@@ -412,17 +441,28 @@ internal static class CollectionMapper
         Func<Expression, Type, Type, ParameterExpression, Expression> elementMapper,
         bool needsElementMapping)
     {
-        // Use ImmutableArray.CreateBuilder<T>() — get the closed builder type from the method return type
-        var createBuilderMethod = typeof(ImmutableArray).GetMethods()
-            .First(m => m.Name == "CreateBuilder" && m.GetParameters().Length == 0)
-            .MakeGenericMethod(targetElementType);
-
-        var builderType = createBuilderMethod.ReturnType;
+        var builderType = typeof(ImmutableArray<>.Builder).MakeGenericType(targetElementType);
         var addMethod = builderType.GetMethod("Add")!;
         var toImmutableMethod = builderType.GetMethod("ToImmutable")!;
 
         var builderVar = Expression.Variable(builderType, "builder");
-        var createBuilder = Expression.Assign(builderVar, Expression.Call(createBuilderMethod));
+
+        // Pre-sized CreateBuilder<T>(capacity) when count is known
+        Expression createBuilder;
+        if (HasCountProperty(sourceType))
+        {
+            var countExpr = CollectionExpressionHelpers.GetCountExpression(sourceExpr);
+            var createBuilderWithCapacity = typeof(ImmutableArray).GetMethod("CreateBuilder", new[] { typeof(int) })!
+                .MakeGenericMethod(targetElementType);
+            createBuilder = Expression.Assign(builderVar, Expression.Call(createBuilderWithCapacity, countExpr));
+        }
+        else
+        {
+            var createBuilderDefault = typeof(ImmutableArray).GetMethods()
+                .First(m => m.Name == "CreateBuilder" && m.GetParameters().Length == 0)
+                .MakeGenericMethod(targetElementType);
+            createBuilder = Expression.Assign(builderVar, Expression.Call(createBuilderDefault));
+        }
 
         var loop = CollectionExpressionHelpers.BuildForEachLoop(sourceExpr, originElementType, currentExpr =>
         {
@@ -552,6 +592,44 @@ internal static class CollectionMapper
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Maps a single element from source type to target type. Uses <c>Expression.Convert</c>
+    /// for simple/primitive type conversions (e.g., <c>int</c> → <c>long</c>) and delegates
+    /// to <paramref name="elementMapper"/> for complex types or collection types requiring
+    /// recursive mapping.
+    /// </summary>
+    private static Expression BuildMappedElement(
+        Expression elementExpr,
+        Type sourceElementType,
+        Type targetElementType,
+        ParameterExpression scopeParam,
+        Func<Expression, Type, Type, ParameterExpression, Expression> elementMapper)
+    {
+        // Collection-typed elements (e.g., List<Order> inside Dict<string, List<Order>>)
+        // must be routed through the element mapper so BuildNestedMappingExpression can
+        // dispatch them to CollectionMapper rather than treating them as simple conversions.
+        var sourceIsCollection = CollectionCategoryResolver.Resolve(sourceElementType) != CollectionCategory.Unknown;
+        var targetIsCollection = CollectionCategoryResolver.Resolve(targetElementType) != CollectionCategory.Unknown;
+
+        if (sourceIsCollection || targetIsCollection)
+        {
+            return CollectionExpressionHelpers.BuildElementMappingCall(
+                elementExpr, sourceElementType, targetElementType, scopeParam, elementMapper);
+        }
+
+        // For simple/primitive type conversions (int→long, float→double, etc.),
+        // use Expression.Convert directly — routing through the element mapper
+        // would fail since these types have no writable members for blueprint compilation.
+        if (!ComplexTypeDetector.IsComplexType(sourceElementType)
+            && !ComplexTypeDetector.IsComplexType(targetElementType))
+        {
+            return Expression.Convert(elementExpr, targetElementType);
+        }
+
+        return CollectionExpressionHelpers.BuildElementMappingCall(
+            elementExpr, sourceElementType, targetElementType, scopeParam, elementMapper);
     }
 
     private static Expression EnsureType(Expression expr, Type targetType)
