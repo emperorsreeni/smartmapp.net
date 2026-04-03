@@ -47,6 +47,10 @@ internal sealed class TargetConstructionResolver
         if (targetModel.HasParameterlessConstructor)
             return ConstructionStrategy.Parameterless;
 
+        // Value types always have an implicit parameterless constructor
+        if (targetModel.ClrType.IsValueType)
+            return ConstructionStrategy.Parameterless;
+
         return ConstructionStrategy.BestMatchConstructor;
     }
 
@@ -100,13 +104,19 @@ internal sealed class TargetConstructionResolver
     internal static (Expression, HashSet<string>) BuildParameterlessExpression(TypeModel targetModel)
     {
         var ctor = targetModel.Constructors.FirstOrDefault(c => c.ParameterCount == 0);
-        if (ctor is null)
+        if (ctor is not null)
         {
-            throw new MappingCompilationException(
-                $"Type '{targetModel.ClrType.Name}' has no public parameterless constructor.");
+            return (Expression.New(ctor.ConstructorInfo), new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         }
 
-        return (Expression.New(ctor.ConstructorInfo), new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        // Value types have an implicit parameterless constructor not returned by GetConstructors
+        if (targetModel.ClrType.IsValueType)
+        {
+            return (Expression.New(targetModel.ClrType), new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        throw new MappingCompilationException(
+            $"Type '{targetModel.ClrType.Name}' has no public parameterless constructor.");
     }
 
     /// <summary>

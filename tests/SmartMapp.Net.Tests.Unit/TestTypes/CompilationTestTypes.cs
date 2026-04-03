@@ -299,6 +299,13 @@ public class RequiredTarget
     public required string Name { get; set; }
     public string? Optional { get; set; }
 }
+
+public class RequiredTargetWithUnmapped
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public required string MandatoryField { get; set; }
+}
 #endif
 
 // ── Deep cycle A→B→C→A types ──
@@ -462,4 +469,117 @@ public class NullableIntermediateTarget
 {
     public int Id { get; set; }
     public int Score { get; set; }
+}
+
+// ── Enum ↔ String mapping types (reuses OrderStatus from TransformerTestTypes.cs) ──
+
+public class EnumOrigin
+{
+    public int Id { get; set; }
+    public OrderStatus Status { get; set; }
+}
+
+public class EnumToStringDto
+{
+    public int Id { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+public class StringToEnumOrigin
+{
+    public int Id { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
+public class StringToEnumDto
+{
+    public int Id { get; set; }
+    public OrderStatus Status { get; set; }
+}
+
+// ── Transformer lookup integration types ──
+
+public class TransformerOrigin
+{
+    public int Id { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class TransformerDto
+{
+    public int Id { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+// ── Plain struct for ComplexTypeDetector ──
+
+public struct PointStruct
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+public struct PointStructDto
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+
+// ── Explicit transformer on PropertyLink ──
+
+public class ExplicitTransformerOrigin
+{
+    public int Id { get; set; }
+    public int Code { get; set; }
+}
+
+public class ExplicitTransformerTarget
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+}
+
+// ── Nested transformer propagation types ──
+
+public class ParentWithNestedTransform
+{
+    public int Id { get; set; }
+    public ChildWithDateTime Child { get; set; } = null!;
+}
+
+public class ChildWithDateTime
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class ParentWithNestedTransformDto
+{
+    public int Id { get; set; }
+    public ChildWithDateTimeOffsetDto Child { get; set; } = null!;
+}
+
+public class ChildWithDateTimeOffsetDto
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+// ── Nullable<T> intermediate in chain for HasValue guard ──
+
+public class NullableChainOrigin
+{
+    public int Id { get; set; }
+    public NullableChainInner? Inner { get; set; }
+}
+
+public class NullableChainInner
+{
+    public int? Score { get; set; }
+}
+
+public class NullableChainTarget
+{
+    public int Id { get; set; }
+    public NullableChainInner? Inner { get; set; }
 }

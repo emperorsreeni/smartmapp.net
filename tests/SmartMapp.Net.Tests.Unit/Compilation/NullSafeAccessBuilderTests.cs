@@ -125,4 +125,20 @@ public class NullSafeAccessBuilderTests
         lambda(new NestedCustomer { Name = "Bob" }).Should().Be("Bob");
         lambda(null!).Should().BeNull();
     }
+
+    [Fact]
+    public void NullableIntermediate_HasValue_ReturnsValue()
+    {
+        // Chain: NullableChainOrigin.Inner.Score (int? intermediate)
+        var param = Expression.Parameter(typeof(NullableChainInner), "inner");
+        var scoreProp = typeof(NullableChainInner).GetProperty("Score")!;
+
+        var expr = NullSafeAccessBuilder.BuildNullSafeAccess(
+            param, new MemberInfo[] { scoreProp }, typeof(int?));
+
+        var lambda = Expression.Lambda<Func<NullableChainInner, int?>>(expr, param).Compile();
+
+        lambda(new NullableChainInner { Score = 42 }).Should().Be(42);
+        lambda(new NullableChainInner { Score = null }).Should().BeNull();
+    }
 }

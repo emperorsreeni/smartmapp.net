@@ -70,6 +70,18 @@ public class ComplexTypeDetectorTests
     }
 
     [Fact]
+    public void PlainStruct_IsComplex()
+    {
+        ComplexTypeDetector.IsComplexType(typeof(PointStruct)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ByteArray_IsNotComplex()
+    {
+        ComplexTypeDetector.IsComplexType(typeof(byte[])).Should().BeFalse();
+    }
+
+    [Fact]
     public void Interface_IsNotComplex()
     {
         ComplexTypeDetector.IsComplexType(typeof(IHasName)).Should().BeFalse();

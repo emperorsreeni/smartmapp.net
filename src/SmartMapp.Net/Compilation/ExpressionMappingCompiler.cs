@@ -48,4 +48,70 @@ internal sealed class ExpressionMappingCompiler
     {
         return _compiler.Compile(blueprint);
     }
+
+    /// <summary>
+    /// Compiles the blueprint into a strongly-typed <see cref="Expression{TDelegate}"/>
+    /// suitable for IQueryable providers (e.g., EF Core's <c>Select()</c>).
+    /// The resulting expression has the form <c>(TOrigin origin) =&gt; new TTarget { ... }</c>.
+    /// </summary>
+    /// <typeparam name="TOrigin">The origin (source) type.</typeparam>
+    /// <typeparam name="TTarget">The target (destination) type.</typeparam>
+    /// <param name="blueprint">The mapping blueprint.</param>
+    /// <returns>A strongly-typed uncompiled lambda expression for IQueryable projection.</returns>
+    internal Expression<Func<TOrigin, TTarget>> CompileToProjectionExpression<TOrigin, TTarget>(Blueprint blueprint)
+    {
+        // Get the untyped lambda: (object origin, MappingScope scope) => (object)mapped
+        var untypedLambda = _compiler.CompileToLambda(blueprint);
+
+        // Rebuild as strongly-typed: (TOrigin origin) => (TTarget)body
+        // For IQueryable projection we don't use MappingScope (no runtime state in DB queries)
+        var originParam = Expression.Parameter(typeof(TOrigin), "origin");
+
+        // Replace the untyped origin param and scope with typed equivalents
+        var replacer = new ParameterReplacer(
+            untypedLambda.Parameters[0],
+            Expression.Convert(originParam, typeof(object)));
+
+        var rewrittenBody = replacer.Visit(untypedLambda.Body);
+
+        // Replace scope param with a default MappingScope constant (not used in projections)
+        var scopeReplacer = new ParameterReplacer(
+            untypedLambda.Parameters[1],
+            Expression.Constant(new MappingScope(), typeof(MappingScope)));
+
+        rewrittenBody = scopeReplacer.Visit(rewrittenBody);
+
+        // Strip the outer Convert to object and re-convert to TTarget
+        if (rewrittenBody is UnaryExpression { NodeType: ExpressionType.Convert } outerConvert
+            && outerConvert.Type == typeof(object))
+        {
+            rewrittenBody = Expression.Convert(outerConvert.Operand, typeof(TTarget));
+        }
+        else
+        {
+            rewrittenBody = Expression.Convert(rewrittenBody, typeof(TTarget));
+        }
+
+        return Expression.Lambda<Func<TOrigin, TTarget>>(rewrittenBody, originParam);
+    }
+
+    /// <summary>
+    /// Simple expression visitor that replaces a specific parameter with a substitute expression.
+    /// </summary>
+    private sealed class ParameterReplacer : ExpressionVisitor
+    {
+        private readonly ParameterExpression _oldParam;
+        private readonly Expression _replacement;
+
+        internal ParameterReplacer(ParameterExpression oldParam, Expression replacement)
+        {
+            _oldParam = oldParam;
+            _replacement = replacement;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return node == _oldParam ? _replacement : base.VisitParameter(node);
+        }
+    }
 }
