@@ -20,6 +20,8 @@ internal sealed class BlueprintCompiler
     private readonly MappingDelegateCache _delegateCache;
     private readonly Func<TypePair, Blueprint?>? _blueprintResolver;
     private readonly Func<Type, Type, ITypeTransformer?>? _transformerLookup;
+    private readonly Abstractions.InheritanceResolver? _inheritanceResolver;
+    private readonly PolymorphicDispatchBuilder? _polymorphicDispatchBuilder;
 
     /// <summary>
     /// Initializes a new instance of <see cref="BlueprintCompiler"/>.
@@ -34,17 +36,28 @@ internal sealed class BlueprintCompiler
     /// Optional lookup for type transformers by (originType, targetType). Bridges Sprint 3's
     /// <c>TypeTransformerRegistry</c> into expression compilation.
     /// </param>
+    /// <param name="inheritanceResolver">
+    /// Optional inheritance resolver for polymorphic dispatch. When provided, compiled delegates
+    /// are automatically wrapped with type-check dispatch for derived types (Sprint 6).
+    /// </param>
     internal BlueprintCompiler(
         TypeModelCache typeModelCache,
         MappingDelegateCache delegateCache,
         Func<TypePair, Blueprint?>? blueprintResolver = null,
-        Func<Type, Type, ITypeTransformer?>? transformerLookup = null)
+        Func<Type, Type, ITypeTransformer?>? transformerLookup = null,
+        Abstractions.InheritanceResolver? inheritanceResolver = null)
     {
         _typeModelCache = typeModelCache;
         _delegateCache = delegateCache;
         _blueprintResolver = blueprintResolver;
         _transformerLookup = transformerLookup;
-        _constructionResolver = new TargetConstructionResolver(typeModelCache);
+        _inheritanceResolver = inheritanceResolver;
+        _constructionResolver = new TargetConstructionResolver(typeModelCache, inheritanceResolver);
+
+        if (inheritanceResolver is not null)
+        {
+            _polymorphicDispatchBuilder = new PolymorphicDispatchBuilder(inheritanceResolver, delegateCache);
+        }
     }
 
     /// <summary>
@@ -55,7 +68,26 @@ internal sealed class BlueprintCompiler
     internal Func<object, MappingScope, object> Compile(Blueprint blueprint)
     {
         var lambda = CompileToLambda(blueprint);
-        return lambda.Compile();
+        var baseDelegate = lambda.Compile();
+
+        // Wrap with polymorphic dispatch if derived pairs exist (Sprint 6)
+        if (_polymorphicDispatchBuilder is not null)
+        {
+            var dispatchDelegate = _polymorphicDispatchBuilder.BuildDispatchDelegate(
+                blueprint.TypePair,
+                baseDelegate,
+                derivedPair =>
+                {
+                    var derivedBp = ResolveNestedBlueprint(derivedPair, trackReferences: false);
+                    var derivedLambda = CompileToLambda(derivedBp);
+                    return derivedLambda.Compile();
+                });
+
+            if (dispatchDelegate is not null)
+                return dispatchDelegate;
+        }
+
+        return baseDelegate;
     }
 
     /// <summary>

@@ -24,4 +24,10 @@ internal enum ConstructionStrategy
     /// A user-supplied factory function is used via <c>Blueprint.TargetFactory</c>.
     /// </summary>
     Factory,
+
+    /// <summary>
+    /// Target type is an interface or abstract class — resolved via
+    /// <c>InterfaceMaterializer</c> using <c>Materialize&lt;T&gt;()</c> or <c>DispatchProxy</c>.
+    /// </summary>
+    Materialized,
 }

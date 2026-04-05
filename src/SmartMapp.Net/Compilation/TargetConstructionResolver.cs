@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using SmartMapp.Net.Abstractions;
 using SmartMapp.Net.Caching;
 using SmartMapp.Net.Discovery;
 
@@ -13,14 +14,20 @@ namespace SmartMapp.Net.Compilation;
 internal sealed class TargetConstructionResolver
 {
     private readonly TypeModelCache _typeModelCache;
+    private readonly InterfaceMaterializer? _interfaceMaterializer;
 
     /// <summary>
     /// Initializes a new instance of <see cref="TargetConstructionResolver"/>.
     /// </summary>
     /// <param name="typeModelCache">The shared type model cache.</param>
-    internal TargetConstructionResolver(TypeModelCache typeModelCache)
+    /// <param name="inheritanceResolver">Optional inheritance resolver for interface/abstract materialization (Sprint 6).</param>
+    internal TargetConstructionResolver(
+        TypeModelCache typeModelCache,
+        InheritanceResolver? inheritanceResolver = null)
     {
         _typeModelCache = typeModelCache;
+        if (inheritanceResolver is not null)
+            _interfaceMaterializer = new InterfaceMaterializer(inheritanceResolver);
     }
 
     /// <summary>
@@ -33,6 +40,10 @@ internal sealed class TargetConstructionResolver
     {
         if (blueprint.TargetFactory is not null)
             return ConstructionStrategy.Factory;
+
+        // Interface/abstract targets require materialization (Sprint 6)
+        if (targetModel.ClrType.IsInterface || targetModel.ClrType.IsAbstract)
+            return ConstructionStrategy.Materialized;
 
         if (targetModel.PrimaryConstructor is not null && targetModel.PrimaryConstructor.ParameterCount > 0)
         {
@@ -77,6 +88,7 @@ internal sealed class TargetConstructionResolver
         return strategy switch
         {
             ConstructionStrategy.Factory => BuildFactoryExpression(blueprint, originParam),
+            ConstructionStrategy.Materialized => BuildMaterializedExpression(blueprint),
             ConstructionStrategy.Parameterless => BuildParameterlessExpression(targetModel),
             ConstructionStrategy.PrimaryConstructor => BuildPrimaryCtorExpression(targetModel, originModel, originParam),
             ConstructionStrategy.BestMatchConstructor => BuildBestMatchExpression(targetModel, originModel, originParam),
@@ -96,6 +108,43 @@ internal sealed class TargetConstructionResolver
         var invokeFactory = Expression.Invoke(factoryConst, Expression.Convert(originParam, typeof(object)));
         var castResult = Expression.Convert(invokeFactory, blueprint.TargetType);
         return (castResult, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Builds an expression for interface/abstract target types using <see cref="InterfaceMaterializer"/>.
+    /// Resolves the concrete type and constructs it, or creates a <c>DispatchProxy</c> for interfaces.
+    /// </summary>
+    private (Expression, HashSet<string>) BuildMaterializedExpression(Blueprint blueprint)
+    {
+        if (_interfaceMaterializer is null)
+        {
+            throw new MappingCompilationException(
+                $"Cannot map to interface/abstract type '{blueprint.TargetType.Name}' " +
+                "without an InheritanceResolver. Configure Materialize<T>() or provide an InheritanceResolver.");
+        }
+
+        var concreteType = _interfaceMaterializer.ResolveConcreteType(blueprint.TypePair);
+
+        if (concreteType == typeof(PropertyBackedProxy))
+        {
+            // Interface proxy: use InterfaceMaterializer.CreateProxy() at runtime
+            var createProxyMethod = typeof(InterfaceMaterializer)
+                .GetMethod(nameof(InterfaceMaterializer.CreateProxy),
+                    BindingFlags.Static | BindingFlags.NonPublic)!;
+
+            var createCall = Expression.Call(
+                createProxyMethod,
+                Expression.Constant(blueprint.TargetType));
+
+            var castResult = Expression.Convert(createCall, blueprint.TargetType);
+            return (castResult, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        // Concrete materialized type: construct it normally
+        var concreteModel = _typeModelCache.GetOrAdd(concreteType);
+        var (expr, consumed) = BuildParameterlessExpression(concreteModel);
+        // Cast to the target interface/abstract type
+        return (Expression.Convert(expr, blueprint.TargetType), consumed);
     }
 
     /// <summary>
