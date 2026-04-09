@@ -157,6 +157,30 @@ public sealed class FlattenUnflattenMappingTests
     }
 
     [Fact]
+    public void Flatten_2Levels_MapsCustomerFirstAndLastName()
+    {
+        var blueprint = BuildFlatteningBlueprint<FlattenOrigin, Flatten2LevelTargetDto>();
+        var mapper = Compile(blueprint);
+
+        var origin = new FlattenOrigin
+        {
+            Id = 1,
+            Customer = new FlattenCustomer
+            {
+                FirstName = "Dana",
+                LastName = "White",
+                Address = new FlattenAddress { City = "Austin", Street = "Elm", ZipCode = "73301" },
+            }
+        };
+
+        var result = (Flatten2LevelTargetDto)mapper(origin, new MappingScope());
+
+        result.Id.Should().Be(1);
+        result.CustomerFirstName.Should().Be("Dana");
+        result.CustomerLastName.Should().Be("White");
+    }
+
+    [Fact]
     public void Flatten_NullIntermediate_ReturnsDefault()
     {
         var blueprint = BuildFlatteningBlueprint<FlattenOrigin, FlattenTargetDto>();
@@ -199,6 +223,96 @@ public sealed class FlattenUnflattenMappingTests
         result.Customer.LastName.Should().Be("Smith");
         result.Customer.Address.Should().NotBeNull();
         result.Customer.Address.City.Should().Be("Seattle");
+    }
+
+    // ──────────────── Mixed: flat + flattened + collection in same Blueprint (S5-T07) ────────────────
+
+    [Fact]
+    public void Mixed_FlatAndFlattenedAndCollection_InSameBlueprint()
+    {
+        var blueprint = BuildFlatteningBlueprint<MixedFlattenOrigin, MixedFlattenTargetDto>();
+        var mapper = Compile(blueprint);
+
+        var origin = new MixedFlattenOrigin
+        {
+            Id = 42,
+            Name = "Mixed",
+            Customer = new FlattenCustomer
+            {
+                FirstName = "Eve",
+                LastName = "Taylor",
+                Address = new FlattenAddress { City = "NYC", Street = "5th Ave", ZipCode = "10001" },
+            },
+            Tags = new List<int> { 1, 2, 3 }
+        };
+
+        var result = (MixedFlattenTargetDto)mapper(origin, new MappingScope());
+
+        // Flat properties
+        result.Id.Should().Be(42);
+        result.Name.Should().Be("Mixed");
+        // Flattened properties
+        result.CustomerFirstName.Should().Be("Eve");
+        result.CustomerLastName.Should().Be("Taylor");
+        // Collection property
+        result.Tags.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+    }
+
+    // ──────────────── Unflattening: 3 Levels Deep (S5-T07) ────────────────
+
+    [Fact]
+    public void Unflatten_3Levels_MapsAllAddressFields()
+    {
+        var blueprint = BuildUnflatteningBlueprint<Unflatten3LevelOriginDto, UnflattenTarget>();
+        var mapper = Compile(blueprint);
+
+        var origin = new Unflatten3LevelOriginDto
+        {
+            Id = 7,
+            CustomerFirstName = "Grace",
+            CustomerLastName = "Hopper",
+            CustomerAddressCity = "Arlington",
+            CustomerAddressStreet = "Navy Blvd",
+            CustomerAddressZipCode = "22201",
+        };
+
+        var result = (UnflattenTarget)mapper(origin, new MappingScope());
+
+        result.Id.Should().Be(7);
+        result.Customer.Should().NotBeNull();
+        result.Customer.FirstName.Should().Be("Grace");
+        result.Customer.LastName.Should().Be("Hopper");
+        result.Customer.Address.Should().NotBeNull();
+        result.Customer.Address.City.Should().Be("Arlington");
+        result.Customer.Address.Street.Should().Be("Navy Blvd");
+        result.Customer.Address.ZipCode.Should().Be("22201");
+    }
+
+    // ──────────────── Unflattening: Auto-Construct Null Intermediates (S5-T07) ────────────────
+
+    [Fact]
+    public void Unflatten_NullIntermediates_AutoConstructed()
+    {
+        var blueprint = BuildUnflatteningBlueprint<UnflattenOriginDto, UnflattenTargetNullInit>();
+        var mapper = Compile(blueprint);
+
+        var origin = new UnflattenOriginDto
+        {
+            Id = 5,
+            CustomerFirstName = "Ada",
+            CustomerLastName = "Lovelace",
+            CustomerAddressCity = "London",
+        };
+
+        var result = (UnflattenTargetNullInit)mapper(origin, new MappingScope());
+
+        // Customer starts as null — must be auto-constructed
+        result.Id.Should().Be(5);
+        result.Customer.Should().NotBeNull();
+        result.Customer!.FirstName.Should().Be("Ada");
+        result.Customer.LastName.Should().Be("Lovelace");
+        result.Customer.Address.Should().NotBeNull();
+        result.Customer.Address.City.Should().Be("London");
     }
 
     // ──────────────── Round-trip ────────────────

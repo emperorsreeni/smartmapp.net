@@ -229,6 +229,30 @@ public sealed class CollectionMappingTests
         result.Tags.Should().BeEmpty();
     }
 
+    // ──────────────── HashSet Complex Elements (S5-T05) ────────────────
+
+    [Fact]
+    public void HashSet_ComplexElements_MapsViaDelegate()
+    {
+        var blueprint = AutoBlueprint<ComplexHashSetOrigin, ComplexHashSetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ComplexHashSetOrigin
+        {
+            Id = 1,
+            Items = new HashSet<OrderItem>
+            {
+                new() { Id = 10, ProductName = "Widget", Price = 9.99m },
+                new() { Id = 20, ProductName = "Gadget", Price = 19.99m }
+            }
+        };
+
+        var result = (ComplexHashSetDto)mapper(origin, new MappingScope());
+
+        result.Items.Should().HaveCount(2);
+        result.Items.Select(i => i.Id).Should().BeEquivalentTo(new[] { 10, 20 });
+        result.Items.Select(i => i.ProductName).Should().BeEquivalentTo(new[] { "Widget", "Gadget" });
+    }
+
     // ──────────────── Dictionary Mapping ────────────────
 
     [Fact]
@@ -401,6 +425,379 @@ public sealed class CollectionMappingTests
         var result = (EnumerableToArrayDto)mapper(origin, new MappingScope());
 
         result.Values.Should().BeEquivalentTo(new[] { 10, 20 });
+    }
+
+    // ──────────────── Single-Element Array (S5-T01) ────────────────
+
+    [Fact]
+    public void Array_SingleElement_MapsCorrectly()
+    {
+        var blueprint = AutoBlueprint<OrderWithArray, OrderWithArrayDto>();
+        var mapper = Compile(blueprint);
+        var origin = new OrderWithArray { Id = 1, Tags = new[] { 42 } };
+
+        var result = (OrderWithArrayDto)mapper(origin, new MappingScope());
+
+        result.Tags.Should().HaveCount(1);
+        result.Tags[0].Should().Be(42);
+    }
+
+    // ──────────────── Jagged Array int[][] (S5-T09) ────────────────
+
+    [Fact]
+    public void JaggedArray_CopiesInnerArrays()
+    {
+        var blueprint = AutoBlueprint<JaggedArrayOrigin, JaggedArrayDto>();
+        var mapper = Compile(blueprint);
+        var origin = new JaggedArrayOrigin
+        {
+            Id = 1,
+            Matrix = new[] { new[] { 1, 2 }, new[] { 3, 4, 5 } }
+        };
+
+        var result = (JaggedArrayDto)mapper(origin, new MappingScope());
+
+        result.Matrix.Should().HaveCount(2);
+        result.Matrix[0].Should().BeEquivalentTo(new[] { 1, 2 });
+        result.Matrix[1].Should().BeEquivalentTo(new[] { 3, 4, 5 });
+    }
+
+    // ──────────────── List<int[]> → List<int[]> (S5-T09) ────────────────
+
+    [Fact]
+    public void ListOfArrays_MapsInnerArrays()
+    {
+        var blueprint = AutoBlueprint<ListOfIntArrayOrigin, ListOfIntArrayDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ListOfIntArrayOrigin
+        {
+            Id = 1,
+            Groups = new List<int[]>
+            {
+                new[] { 1, 2 },
+                new[] { 3, 4, 5 },
+            }
+        };
+
+        var result = (ListOfIntArrayDto)mapper(origin, new MappingScope());
+
+        result.Groups.Should().HaveCount(2);
+        result.Groups[0].Should().BeEquivalentTo(new[] { 1, 2 });
+        result.Groups[1].Should().BeEquivalentTo(new[] { 3, 4, 5 });
+    }
+
+    // ──────────────── IDictionary<K,V> Target (S5-T06) ────────────────
+
+    [Fact]
+    public void IDictionary_Target_ReturnsConcreteDict()
+    {
+        var blueprint = AutoBlueprint<Metadata, IDictionaryTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new Metadata
+        {
+            Id = 1,
+            Properties = new Dictionary<string, int> { ["X"] = 10 }
+        };
+
+        var result = (IDictionaryTargetDto)mapper(origin, new MappingScope());
+
+        result.Properties.Should().ContainKey("X").WhoseValue.Should().Be(10);
+        result.Properties.Should().BeAssignableTo<IDictionary<string, int>>();
+    }
+
+    // ──────────────── IReadOnlyDictionary<K,V> Target (S5-T06) ────────────────
+
+    [Fact]
+    public void IReadOnlyDictionary_Target_ReturnsConcreteDict()
+    {
+        var blueprint = AutoBlueprint<Metadata, IReadOnlyDictionaryTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new Metadata
+        {
+            Id = 1,
+            Properties = new Dictionary<string, int> { ["Y"] = 20 }
+        };
+
+        var result = (IReadOnlyDictionaryTargetDto)mapper(origin, new MappingScope());
+
+        result.Properties.Should().ContainKey("Y").WhoseValue.Should().Be(20);
+        result.Properties.Should().BeAssignableTo<IReadOnlyDictionary<string, int>>();
+    }
+
+    // ──────────────── Dictionary Null → Null (S5-T06) ────────────────
+
+    [Fact]
+    public void Dictionary_NullSource_ReturnsNull()
+    {
+        var blueprint = AutoBlueprint<Metadata, MetadataDto>();
+        var mapper = Compile(blueprint);
+        var origin = new Metadata { Id = 1, Properties = null! };
+
+        var result = (MetadataDto)mapper(origin, new MappingScope());
+
+        result.Properties.Should().BeNull();
+    }
+
+    // ──────────────── ISet<T> Target (S5-T05) ────────────────
+
+    [Fact]
+    public void ISet_Target_ReturnsConcreteHashSet()
+    {
+        var blueprint = AutoBlueprint<TagCloud, ISetTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new TagCloud { Id = 1, Tags = new HashSet<string> { "X", "Y" } };
+
+        var result = (ISetTargetDto)mapper(origin, new MappingScope());
+
+        result.Tags.Should().BeEquivalentTo(new[] { "X", "Y" });
+        result.Tags.Should().BeAssignableTo<ISet<string>>();
+    }
+
+    // ──────────────── IImmutableList<T> Target (S5-T08) ────────────────
+
+    [Fact]
+    public void IImmutableList_Target_ReturnsImmutableList()
+    {
+        var blueprint = AutoBlueprint<ImmutableOrder, IImmutableListTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ImmutableOrder { Id = 1, Values = new List<int> { 5, 6 } };
+
+        var result = (IImmutableListTargetDto)mapper(origin, new MappingScope());
+
+        result.Values.Should().BeEquivalentTo(new[] { 5, 6 });
+        result.Values.Should().BeAssignableTo<System.Collections.Immutable.IImmutableList<int>>();
+    }
+
+    // ──────────────── IReadOnlyCollection<T> Target (S5-T04) ────────────────
+
+    [Fact]
+    public void IReadOnlyCollection_Target_ReturnsConcreteList()
+    {
+        var blueprint = AutoBlueprint<OrderWithICollection, IReadOnlyCollectionTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new OrderWithICollection { Id = 1, Values = new List<int> { 7, 8, 9 } };
+
+        var result = (IReadOnlyCollectionTargetDto)mapper(origin, new MappingScope());
+
+        result.Values.Should().BeEquivalentTo(new[] { 7, 8, 9 });
+        result.Values.Should().BeAssignableTo<IReadOnlyCollection<int>>();
+    }
+
+    // ──────────────── string[] Array.Copy Fast-Path (S5-T01) ────────────────
+
+    [Fact]
+    public void Array_StringArray_CopiesAllElements()
+    {
+        var blueprint = AutoBlueprint<StringArrayOrigin, StringArrayDto>();
+        var mapper = Compile(blueprint);
+        var origin = new StringArrayOrigin { Id = 1, Names = new[] { "Alice", "Bob", "Charlie" } };
+
+        var result = (StringArrayDto)mapper(origin, new MappingScope());
+
+        result.Names.Should().BeEquivalentTo(new[] { "Alice", "Bob", "Charlie" });
+    }
+
+    // ──────────────── List<int> Simple Copy (S5-T02) ────────────────
+
+    [Fact]
+    public void List_SimpleIntList_CopiesAll()
+    {
+        var blueprint = AutoBlueprint<LargeListOrigin, LargeListDto>();
+        var mapper = Compile(blueprint);
+        var origin = new LargeListOrigin { Id = 1, Values = new List<int> { 10, 20, 30 } };
+
+        var result = (LargeListDto)mapper(origin, new MappingScope());
+
+        result.Values.Should().BeEquivalentTo(new[] { 10, 20, 30 });
+    }
+
+    // ──────────────── IList<T> Target (S5-T02) ────────────────
+
+    [Fact]
+    public void IList_Target_ReturnsConcreteList()
+    {
+        var blueprint = AutoBlueprint<OrderWithICollection, IListTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new OrderWithICollection { Id = 1, Values = new List<int> { 1, 2, 3 } };
+
+        var result = (IListTargetDto)mapper(origin, new MappingScope());
+
+        result.Values.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+        result.Values.Should().BeAssignableTo<IList<int>>();
+    }
+
+    // ──────────────── HashSet Duplicate Handling (S5-T05) ────────────────
+
+    [Fact]
+    public void HashSet_DuplicateSourceElements_HandledBySetSemantics()
+    {
+        var blueprint = AutoBlueprint<IntHashSetOrigin, IntHashSetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new IntHashSetOrigin { Id = 1, Values = new List<int> { 1, 2, 2, 3, 3, 3 } };
+
+        var result = (IntHashSetDto)mapper(origin, new MappingScope());
+
+        result.Values.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+        result.Values.Should().HaveCount(3);
+    }
+
+    // ──────────────── Dictionary Key Mapping int→long (S5-T06) ────────────────
+
+    [Fact]
+    public void Dictionary_KeyMapping_IntToLong_MapsKeys()
+    {
+        var blueprint = AutoBlueprint<IntKeyDictOrigin, LongKeyDictDto>();
+        var mapper = Compile(blueprint);
+        var origin = new IntKeyDictOrigin
+        {
+            Id = 1,
+            Lookup = new Dictionary<int, string> { [1] = "one", [2] = "two" }
+        };
+
+        var result = (LongKeyDictDto)mapper(origin, new MappingScope());
+
+        result.Lookup.Should().HaveCount(2);
+        result.Lookup[1L].Should().Be("one");
+        result.Lookup[2L].Should().Be("two");
+    }
+
+    // ──────────────── Dictionary Both Keys+Values Mapped (S5-T06) ────────────────
+
+    [Fact]
+    public void Dictionary_BothKeysAndValues_MappedCorrectly()
+    {
+        var blueprint = AutoBlueprint<IntKeyIntValueDictOrigin, LongKeyLongValueDictDto>();
+        var mapper = Compile(blueprint);
+        var origin = new IntKeyIntValueDictOrigin
+        {
+            Id = 1,
+            Data = new Dictionary<int, int> { [10] = 100, [20] = 200 }
+        };
+
+        var result = (LongKeyLongValueDictDto)mapper(origin, new MappingScope());
+
+        result.Data.Should().HaveCount(2);
+        result.Data[10L].Should().Be(100L);
+        result.Data[20L].Should().Be(200L);
+    }
+
+    // ──────────────── Null ImmutableArray Source (S5-T08) ────────────────
+
+    [Fact]
+    public void ImmutableArray_NullSource_ReturnsDefault()
+    {
+        var blueprint = AutoBlueprint<ImmutableArrayOrder, ImmutableArrayOrderDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ImmutableArrayOrder { Id = 1, Values = null! };
+
+        var result = (ImmutableArrayOrderDto)mapper(origin, new MappingScope());
+
+        // ImmutableArray<T> is a struct; null source array → default ImmutableArray (IsDefault = true)
+        result.Values.IsDefault.Should().BeTrue();
+    }
+
+    // ──────────────── IEnumerable<Order> → List<OrderDto> Complex Elements (S5-T03) ────────────────
+
+    [Fact]
+    public void IEnumerable_ComplexElements_MapsEachElement()
+    {
+        var blueprint = AutoBlueprint<EnumerableComplexOrder, EnumerableComplexOrderDto>();
+        var mapper = Compile(blueprint);
+        var origin = new EnumerableComplexOrder
+        {
+            Id = 1,
+            Items = new List<OrderItem>
+            {
+                new() { Id = 10, ProductName = "Widget", Price = 9.99m },
+                new() { Id = 20, ProductName = "Gadget", Price = 19.99m }
+            }
+        };
+
+        var result = (EnumerableComplexOrderDto)mapper(origin, new MappingScope());
+
+        result.Items.Should().HaveCount(2);
+        result.Items[0].Id.Should().Be(10);
+        result.Items[0].ProductName.Should().Be("Widget");
+        result.Items[1].Id.Should().Be(20);
+        result.Items[1].Price.Should().Be(19.99m);
+    }
+
+    // ──────────────── List<Order> → ImmutableList<OrderDto> Complex Elements (S5-T08) ────────────────
+
+    [Fact]
+    public void ImmutableList_ComplexElements_MapsViaDelegate()
+    {
+        var blueprint = AutoBlueprint<ImmutableComplexOrder, ImmutableComplexOrderDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ImmutableComplexOrder
+        {
+            Id = 1,
+            Items = new List<OrderItem>
+            {
+                new() { Id = 100, ProductName = "Alpha", Price = 5.00m },
+                new() { Id = 200, ProductName = "Beta", Price = 15.00m }
+            }
+        };
+
+        var result = (ImmutableComplexOrderDto)mapper(origin, new MappingScope());
+
+        result.Items.Should().HaveCount(2);
+        result.Items[0].Id.Should().Be(100);
+        result.Items[0].ProductName.Should().Be("Alpha");
+        result.Items[1].Id.Should().Be(200);
+        result.Items[1].Price.Should().Be(15.00m);
+    }
+
+    // ──────────────── List<Order> → ReadOnlyCollection<OrderDto> Complex Elements (S5-T08) ────────────────
+
+    [Fact]
+    public void ReadOnlyCollection_ComplexElements_MapsAndWraps()
+    {
+        var blueprint = AutoBlueprint<ReadOnlyComplexOrder, ReadOnlyComplexOrderDto>();
+        var mapper = Compile(blueprint);
+        var origin = new ReadOnlyComplexOrder
+        {
+            Id = 1,
+            Items = new List<OrderItem>
+            {
+                new() { Id = 30, ProductName = "Gamma", Price = 7.50m }
+            }
+        };
+
+        var result = (ReadOnlyComplexOrderDto)mapper(origin, new MappingScope());
+
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Id.Should().Be(30);
+        result.Items[0].ProductName.Should().Be("Gamma");
+        result.Items.Should().BeOfType<ReadOnlyCollection<OrderItemDto>>();
+    }
+
+    // ──────────────── List<Order> → IReadOnlyCollection<OrderDto> Complex Elements (S5-T04) ────────────────
+
+    [Fact]
+    public void IReadOnlyCollection_ComplexElements_MapsCorrectly()
+    {
+        var blueprint = AutoBlueprint<OrderWithIReadOnlyCollectionComplex, IReadOnlyCollectionComplexTargetDto>();
+        var mapper = Compile(blueprint);
+        var origin = new OrderWithIReadOnlyCollectionComplex
+        {
+            Id = 1,
+            Items = new List<OrderItem>
+            {
+                new() { Id = 10, ProductName = "Widget", Price = 9.99m },
+                new() { Id = 20, ProductName = "Gadget", Price = 19.99m }
+            }
+        };
+
+        var result = (IReadOnlyCollectionComplexTargetDto)mapper(origin, new MappingScope());
+
+        result.Items.Should().HaveCount(2);
+        result.Items.Should().BeAssignableTo<IReadOnlyCollection<OrderItemDto>>();
+        var items = result.Items.ToList();
+        items[0].Id.Should().Be(10);
+        items[0].ProductName.Should().Be("Widget");
+        items[1].Id.Should().Be(20);
+        items[1].Price.Should().Be(19.99m);
     }
 
     private static IEnumerable<int> YieldValues()

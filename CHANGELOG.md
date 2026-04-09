@@ -8,6 +8,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Sprint 5: Collections & Flattening
+
+- **`CollectionCategory`** enum — classifies 12 collection types: `Array`, `List`, `Enumerable`, `Collection`, `ReadOnlyList`, `ReadOnlyCollection`, `HashSet`, `Dictionary`, `ImmutableList`, `ImmutableArray`, `ObservableCollection`, `ReadOnlyCollectionConcrete`, `Unknown`.
+- **`CollectionCategoryResolver`** — resolves `CollectionCategory` from CLR types with `ConcurrentDictionary` caching. Prioritizes concrete types over interfaces. Excludes `string` from collection detection. Supports `IReadOnlySet<T>` on `NET8_0_OR_GREATER`.
+- **`CollectionMapper`** — central dispatcher building expression tree fragments for all collection types. Monolithic design with private static methods per category.
+  - **Array:** `Array.Copy` fast-path for same-type elements; pre-allocated `for` loop for complex elements; `List<T>.ToArray()` fallback for uncountable sources.
+  - **List:** Pre-sized `new List<T>(source.Count)` allocation; `foreach` population with element mapping.
+  - **HashSet:** Pre-sized capacity constructor (`.NET Standard 2.1+`); set semantics handle duplicates.
+  - **Dictionary:** Copy-constructor fast-path (`new Dictionary<K,V>(source)`) for same key+value non-complex types; independent key and value mapping; pre-sized allocation; `IDictionary<K,V>` / `IReadOnlyDictionary<K,V>` interface target support.
+  - **ImmutableList:** `ImmutableList.CreateBuilder<T>()` → `.Add()` → `.ToImmutable()` pattern; `IImmutableList<T>` interface target resolved.
+  - **ImmutableArray:** `ImmutableArray.CreateBuilder<T>(capacity)` pre-sized when count known; parameterless fallback otherwise.
+  - **ObservableCollection:** `new ObservableCollection<T>()` → `.Add()` population.
+  - **ReadOnlyCollection:** Inner `List<T>` built first, then wrapped with `new ReadOnlyCollection<T>(list)`.
+  - **Interface targets:** `ICollection<T>`, `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `IList<T>`, `ISet<T>` all resolved to concrete types via `Expression.Convert`.
+  - **Nested collections:** Recursive `CollectionMapper` invocation for collections-of-collections (`List<List<T>>`, `int[][]`, `Dict<K, List<V>>`), supporting up to 3+ levels.
+  - **Null safety:** All collection paths wrapped with `WrapWithNullCheck` — null source → null target.
+- **`CollectionExpressionHelpers`** — reusable expression tree building blocks: `BuildForLoop`, `BuildForEachLoop`, `WrapWithNullCheck`, `BuildElementMappingCall`, `GetCountExpression`, `GetGenericElementType`, `GetDictionaryTypes`.
+- **`FlattenExpressionBuilder`** — expression tree fragments for flattening (deep read with null-safe navigation via `NullSafeAccessBuilder`) and unflattening (deep write with intermediate object construction). Supports 1–3 level property chains.
+- **`DictionaryObjectMapper`** — bidirectional `Dictionary<string, object>` ↔ typed object mapping. Case-insensitive key lookup via `StringComparer.OrdinalIgnoreCase`. Type coercion for boxed values. Nested dictionary → nested object support. Pre-sized dictionary for object→dict path.
+- **`ValueTupleMapper`** — bidirectional `ValueTuple` ↔ typed object mapping. Positional field matching (`Item1`→first writable property). `TupleElementNamesAttribute` support for named tuples. Expression tree construction via `Expression.New(tupleCtor, args)`.
+- **Integration into `PropertyAssignmentBuilder`** — collection properties automatically dispatched to `CollectionMapper`; complex type detection excludes collections.
+
+### Test Coverage — Sprint 5
+
+- 106 new collection/flattening tests (642 total across project).
+- `CollectionCategoryResolverTests` (19): all 12 types + `string` exclusion + caching + interfaces.
+- `CollectionMappingTests` (39): array (int/string/complex/empty/null/single/large/jagged), list (complex/int/empty/null), interface targets (ICollection/IReadOnlyList/IReadOnlyCollection/IReadOnlyCollection-complex/IList/ISet/IDictionary/IReadOnlyDictionary/IImmutableList), hashset (unique/empty/duplicates/complex-elements), dictionary (same-type/complex/empty/null/key-mapping/both-mapped), immutable (list/array/empty/null/complex-elements), observable, readonly (complex-elements), nested (list-of-list/list-of-array), IEnumerable materialization (int/complex-elements).
+- `CollectionEdgeCaseTests` (22): 100K list, 10K dictionary, null elements, concurrent array/list mapping, deferred IEnumerable exactly-once, empty collections across all types, null source for all types, nested dict-of-list, nested dict-of-complex-list, list-of-complex-arrays, 3-level nesting, null/empty inner collections, duplicate-key dictionary contract.
+- `DictionaryObjectMappingTests` (10): dict→object, compiled delegate, missing key, object→dict, round-trip, detection, type coercion, nested dict, null source, empty object.
+- `FlattenUnflattenMappingTests` (9): 1/2/3-level flatten, null intermediate, unflatten (1-level + 3-level), null intermediate auto-construction, mixed flat+flattened+collection, round-trip.
+- `ValueTupleMappingTests` (7): detection, mapping detection, named tuple→object, object→tuple, unnamed tuple, ValueTuple-is-struct, round-trip.
+- Thread safety verified with 100 concurrent tasks on array and list mapping.
+
+---
+
+### Added — Sprint 4: Expression Compilation Pipeline
+
+- **`BlueprintCompiler`** — compiles `Blueprint` into `Func<object, MappingScope, object>` delegates via expression trees. Supports nested object mapping, collection dispatch, constructor resolution, init-only properties, and recursive delegate caching.
+- **`ExpressionMappingCompiler`** — alternative entry point for expression-based compilation with direct lambda output.
+- **`PropertyAssignmentBuilder`** — builds assignment expressions for `PropertyLink` targets. Handles direct member access, `IValueProvider` invocation, collection mapping dispatch, nested complex type mapping, `ITypeTransformer` application, fallback values, and conditional assignment (`When`/`OnlyIf`).
+- **`TargetConstructionResolver`** — resolves target object construction strategy: parameterless constructor, primary constructor with parameter matching, `MemberInit` for init-only properties, and `Expression.Convert` type coercion.
+- **`NullSafeAccessBuilder`** — builds null-safe member chain access expressions with `default(T)` fallback for null intermediates.
+- **`ComplexTypeDetector`** — identifies complex types requiring recursive mapping (excludes primitives, strings, enums, `Nullable<T>`, `DateTime` family, `Guid`, `Uri`, collections).
+- **`CircularReferenceGuard`** — prevents infinite recursion during compilation by tracking visited type pairs.
+- **`DepthLimitGuard`** — enforces configurable maximum nesting depth during mapping.
+- **`DirectMemberProvider`** — `IValueProvider` reading a single `MemberInfo` via compiled expression.
+- **`TransformerExpressionHelper`** — builds type transformation expressions using `TypeTransformerRegistry`.
+- **`RequiredMemberValidator`** — validates required members are mapped in the blueprint.
+- **`MappingCompilationException`** — typed exception for compilation failures.
+- **`MappingDelegateCache`** — thread-safe cache for compiled mapping delegates keyed by `TypePair`.
+
+### Test Coverage — Sprint 4
+
+- 154 new compilation tests (378→532 total).
+- `BlueprintCompilerTests`, `PropertyAssignmentBuilderTests`, `TargetConstructionResolverTests`, `NullSafeAccessBuilderTests`, `ComplexTypeDetectorTests`, `CircularReferenceGuardTests`, `DepthLimitGuardTests`.
+
+---
+
 ### Added — Sprint 3: Built-in Type Transformers
 
 - **`TypeTransformerRegistry`** — central transformer lookup and storage with exact-match dictionary + open transformer `CanTransform` scan with cached results. Thread-safe via `ConcurrentDictionary`. Supports `Register<TOrigin, TTarget>`, `RegisterOpen`, `GetTransformer`, `HasTransformer`, `GetRegisteredPairs`, `Clear`, and `ClearOpen`.

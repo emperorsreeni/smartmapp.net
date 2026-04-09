@@ -87,6 +87,20 @@ public sealed record Blueprint
     public bool StrictRequiredMembers { get; init; }
 
     /// <summary>
+    /// Gets the optional type-level condition predicate.
+    /// When set, the entire mapping is skipped if this returns <c>false</c>.
+    /// Configured via <c>.When()</c> on the binding rule.
+    /// </summary>
+    public Func<object, bool>? Condition { get; init; }
+
+    /// <summary>
+    /// Gets the optional type-level transformer type.
+    /// When set, the mapping result is post-processed through this transformer.
+    /// Configured via <c>.TransformWith&lt;T&gt;()</c> on the binding rule.
+    /// </summary>
+    public Type? TypeTransformer { get; init; }
+
+    /// <summary>
     /// Creates an empty blueprint for the given type pair. Useful for test scaffolding.
     /// </summary>
     /// <param name="pair">The type pair.</param>

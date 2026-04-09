@@ -139,4 +139,85 @@ public sealed class DictionaryObjectMappingTests
         DictionaryObjectMapper.IsDictionaryObjectMapping(
             typeof(Dictionary<string, object>), typeof(Dictionary<string, object>)).Should().BeFalse();
     }
+
+    [Fact]
+    public void DictionaryToObject_TypeCoercion_IntBoxedAsObject_MapsCorrectly()
+    {
+        var dict = new Dictionary<string, object> { ["Id"] = 99, ["Name"] = "TypeCoerced", ["Age"] = 50 };
+
+        var sourceParam = System.Linq.Expressions.Expression.Parameter(typeof(Dictionary<string, object>), "source");
+        var scopeParam = System.Linq.Expressions.Expression.Parameter(typeof(MappingScope), "scope");
+
+        var body = DictionaryObjectMapper.BuildDictionaryToObject(sourceParam, typeof(PersonForDict), scopeParam);
+        var lambda = System.Linq.Expressions.Expression.Lambda<Func<Dictionary<string, object>, MappingScope, PersonForDict>>(
+            body, sourceParam, scopeParam);
+        var compiled = lambda.Compile();
+
+        var result = compiled(dict, new MappingScope());
+
+        result.Id.Should().Be(99);
+        result.Age.Should().Be(50);
+    }
+
+    [Fact]
+    public void DictionaryToObject_NestedDict_MapsToNestedObject()
+    {
+        var address = new Dictionary<string, object> { ["City"] = "Seattle", ["Street"] = "Pike St", ["ZipCode"] = "98101" };
+
+        var sourceParam = System.Linq.Expressions.Expression.Parameter(typeof(Dictionary<string, object>), "source");
+        var scopeParam = System.Linq.Expressions.Expression.Parameter(typeof(MappingScope), "scope");
+
+        var body = DictionaryObjectMapper.BuildDictionaryToObject(sourceParam, typeof(FlattenAddress), scopeParam);
+        var lambda = System.Linq.Expressions.Expression.Lambda<Func<Dictionary<string, object>, MappingScope, FlattenAddress>>(
+            body, sourceParam, scopeParam);
+        var compiled = lambda.Compile();
+
+        var result = compiled(address, new MappingScope());
+
+        result.City.Should().Be("Seattle");
+        result.Street.Should().Be("Pike St");
+        result.ZipCode.Should().Be("98101");
+    }
+
+    [Fact]
+    public void DictionaryToObject_NullSource_ReturnsDefault()
+    {
+        var sourceParam = System.Linq.Expressions.Expression.Parameter(typeof(Dictionary<string, object>), "source");
+        var scopeParam = System.Linq.Expressions.Expression.Parameter(typeof(MappingScope), "scope");
+
+        var body = DictionaryObjectMapper.BuildDictionaryToObject(sourceParam, typeof(PersonForDict), scopeParam);
+
+        // Wrap with null check — same as production code would
+        var nullCheck = System.Linq.Expressions.Expression.Equal(
+            sourceParam,
+            System.Linq.Expressions.Expression.Constant(null, typeof(Dictionary<string, object>)));
+        var wrapped = System.Linq.Expressions.Expression.Condition(
+            nullCheck,
+            System.Linq.Expressions.Expression.Default(typeof(PersonForDict)),
+            body);
+
+        var lambda = System.Linq.Expressions.Expression.Lambda<Func<Dictionary<string, object>, MappingScope, PersonForDict?>>(
+            wrapped, sourceParam, scopeParam);
+        var compiled = lambda.Compile();
+
+        var result = compiled(null!, new MappingScope());
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void ObjectToDictionary_EmptyObject_ReturnsEmptyDict()
+    {
+        var sourceParam = System.Linq.Expressions.Expression.Parameter(typeof(EmptyDto), "source");
+        var scopeParam = System.Linq.Expressions.Expression.Parameter(typeof(MappingScope), "scope");
+
+        var body = DictionaryObjectMapper.BuildObjectToDictionary(sourceParam, typeof(EmptyDto), scopeParam);
+        var lambda = System.Linq.Expressions.Expression.Lambda<Func<EmptyDto, MappingScope, Dictionary<string, object>>>(
+            body, sourceParam, scopeParam);
+        var compiled = lambda.Compile();
+
+        var result = compiled(new EmptyDto(), new MappingScope());
+
+        result.Should().BeEmpty();
+    }
 }
