@@ -206,8 +206,11 @@ internal sealed class PropertyAssignmentBuilder
             return nestedMapper(valueExpr, originType, targetMemberType, scopeParam);
         }
 
-        // Apply transformer if types don't match
-        if (originType != targetMemberType)
+        // Apply transformer if types don't match, OR when an explicit transformer is attached
+        // to the link (e.g., via [TransformWith] or .TransformWith<T>()). Explicit transformers
+        // must always run — including for same-type pairs where a user may want a post-processor
+        // (e.g., uppercasing a string).
+        if (originType != targetMemberType || link.Transformer is not null)
         {
             valueExpr = TransformerExpressionHelper.BuildTransformExpression(
                 valueExpr, originType, targetMemberType, scopeParam, link.Transformer);

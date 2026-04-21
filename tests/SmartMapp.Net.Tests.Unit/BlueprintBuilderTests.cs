@@ -180,11 +180,12 @@ public class BlueprintBuilderTests
     }
 
     [Fact]
-    public void Compose_ThrowsNotImplemented()
+    public void Compose_ReturnsNonNullStub()
     {
+        // Sprint 7 T04 AC: Compose<T>() must return a non-null stub; full execution lands in Sprint 15.
         var builder = new BlueprintBuilder();
-        var act = () => builder.Compose<OrderDto>();
-        act.Should().Throw<NotImplementedException>();
+        var rule = builder.Compose<OrderDto>();
+        rule.Should().NotBeNull();
     }
 
     [Fact]

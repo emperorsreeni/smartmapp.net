@@ -20,6 +20,33 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
     /// </summary>
     internal IReadOnlyList<BindingConfiguration> Bindings => _bindings;
 
+    /// <summary>
+    /// Gets the inheritance resolver produced during <see cref="Build"/>.
+    /// Non-null only after <see cref="Build"/> has been called.
+    /// </summary>
+    internal InheritanceResolver? ResolvedInheritanceResolver { get; private set; }
+
+    /// <summary>
+    /// Returns <c>true</c> when a binding for <paramref name="pair"/> is already registered.
+    /// </summary>
+    internal bool IsRegistered(TypePair pair) => _registeredPairs.Contains(pair);
+
+    /// <summary>
+    /// Registers an empty binding for a runtime-supplied pair. Used by the scanner integration
+    /// in <see cref="Runtime.SculptorBuildPipeline"/> for attribute-discovered type pairs that
+    /// have no explicit fluent or blueprint configuration.
+    /// </summary>
+    /// <param name="pair">The type pair to register.</param>
+    /// <returns>The newly created <see cref="BindingConfiguration"/>, or <c>null</c> if the
+    /// pair was already registered.</returns>
+    internal BindingConfiguration? RegisterEmpty(TypePair pair)
+    {
+        if (!_registeredPairs.Add(pair)) return null;
+        var config = new BindingConfiguration(pair);
+        _bindings.Add(config);
+        return config;
+    }
+
     /// <inheritdoc />
     public IBindingRule<TOrigin, TTarget> Bind<TOrigin, TTarget>()
     {
@@ -38,9 +65,8 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
     /// <inheritdoc />
     public ICompositionRule<TTarget> Compose<TTarget>()
     {
-        // Stub for Sprint 15
-        throw new NotImplementedException(
-            "Compose<T>() is not yet implemented. Multi-origin composition will be available in Sprint 15.");
+        // Non-null stub per Sprint 7 AC — execution lands in Sprint 15.
+        return new CompositionRule<TTarget>();
     }
 
     /// <summary>
@@ -84,6 +110,7 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
         }
 
         inheritanceResolver.BuildDerivedPairLookup(blueprints.Select(b => b.TypePair));
+        ResolvedInheritanceResolver = inheritanceResolver;
 
         // Phase 3: Resolve blueprint inheritance (InheritFrom)
         var inheritResolver = new BlueprintInheritanceResolver(inheritanceResolver, blueprints);
