@@ -25,6 +25,16 @@ public sealed class Sculptor : ISculptor, ISculptorConfiguration
     /// </summary>
     public ISculptorConfiguration Configuration => this;
 
+    /// <summary>
+    /// Gets the internal <see cref="ForgedSculptorConfiguration"/> backing this sculptor.
+    /// Exposed to first-party consumers (tests, benchmarks,
+    /// <c>SmartMapp.Net.DependencyInjection</c>) so they can construct
+    /// <see cref="Mapper{TOrigin,TTarget}"/> instances directly via
+    /// <see cref="MapperFactory.Create{TOrigin,TTarget}"/> without a double dispatch through
+    /// <see cref="ISculptor"/>.
+    /// </summary>
+    internal ForgedSculptorConfiguration ForgedConfiguration => _config;
+
     // ---------------- ISculptor ----------------
 
     /// <inheritdoc />
@@ -132,14 +142,21 @@ public sealed class Sculptor : ISculptor, ISculptorConfiguration
         if (origins.Length == 0)
             throw new ArgumentException("Compose requires at least one origin.", nameof(origins));
 
-        if (origins.Length == 1)
+        // Single-origin Compose reduces to plain Map (spec §S8-T08 Acceptance bullet 6) when no
+        // explicit composition blueprint is registered for the target. If the caller DID declare
+        // a composition for this target, we honour the declaration (single-origin flows through
+        // CompositionDispatcher with one slot filled).
+        if (origins.Length == 1 && _config.TryGetCompositionBlueprint(typeof(TTarget)) is null)
         {
-            var origin = origins[0];
-            return (TTarget)Map(origin, origin.GetType(), typeof(TTarget));
+            var single = origins[0];
+            if (single is null) throw new ArgumentNullException(nameof(origins), "Compose cannot accept a single null origin.");
+            return (TTarget)Map(single, single.GetType(), typeof(TTarget));
         }
 
-        throw new NotSupportedException(
-            "Multi-origin composition is not yet available. Support arrives in Sprint 15.");
+        // Sprint 8 · S8-T08: runtime dispatch across 1–N origins via CompositionDispatcher. It
+        // matches caller instances to declared origin slots, executes each origin's partial
+        // blueprint, and merges the contributed members into a single target.
+        return CompositionDispatcher.Dispatch<TTarget>(_config, origins);
     }
 
     /// <inheritdoc />
@@ -169,32 +186,12 @@ public sealed class Sculptor : ISculptor, ISculptorConfiguration
 
     private LambdaExpression GetProjectionExpression(Type originType, Type targetType)
     {
-        // Minimal projection builder: produce `origin => (TTarget) mappingDelegate(origin, scope)`
-        // wrapping the compiled delegate. Full EF-optimised expression rewriter lands in Sprint 21.
+        // S8-T06: delegate to SculptorProjectionBuilder which emits pure MemberInit expressions
+        // translatable by IQueryable providers (EF Core 8+). ProjectionCache in
+        // ForgedSculptorConfiguration memoises the result — the same Expression instance is
+        // returned on every subsequent request for the pair.
         var pair = new TypePair(originType, targetType);
-        return _config.ProjectionCache.GetOrAdd(pair, p => BuildProjectionExpression(p));
-    }
-
-    private LambdaExpression BuildProjectionExpression(TypePair pair)
-    {
-        var bp = _config.TryGetBlueprint(pair)
-            ?? throw new MappingConfigurationException(
-                $"Cannot build projection: no blueprint registered for type pair '{pair}'.", pair);
-
-        var del = _config.DelegateCache.GetOrCompile(pair, _ => _config.Compiler.Compile(bp));
-        var scope = MappingExecutor.CreateScope(_config);
-
-        var originParam = Expression.Parameter(pair.OriginType, "origin");
-        var delConst = Expression.Constant(del, typeof(Func<object, MappingScope, object>));
-        var scopeConst = Expression.Constant(scope, typeof(MappingScope));
-
-        var invoke = Expression.Invoke(delConst,
-            Expression.Convert(originParam, typeof(object)),
-            scopeConst);
-
-        var body = Expression.Convert(invoke, pair.TargetType);
-        var funcType = typeof(Func<,>).MakeGenericType(pair.OriginType, pair.TargetType);
-        return Expression.Lambda(funcType, body, originParam);
+        return SculptorProjectionBuilder.BuildOrGet(_config, pair);
     }
 
     /// <inheritdoc />

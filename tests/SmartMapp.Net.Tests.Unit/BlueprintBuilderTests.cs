@@ -214,11 +214,14 @@ public class BlueprintBuilderTests
     [Fact]
     public void DeferredValueProvider_ThrowsWithoutServiceProvider()
     {
+        // Post-S8-T04: resolution routes through IProviderResolver. IValueProvider is an
+        // interface → DefaultProviderResolver throws "abstract or an interface" with a hint
+        // pointing at DI registration as the fix (spec §11.4).
         var provider = new DeferredValueProvider(typeof(IValueProvider));
         var scope = new MappingScope();
 
         var act = () => provider.Provide(new object(), new object(), "Test", scope);
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*no ServiceProvider*");
+            .WithMessage("*abstract or an interface*");
     }
 }

@@ -18,6 +18,30 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartMapp.Net\SmartMapp.Net.csproj" />
+    <ProjectReference Include="..\..\src\SmartMapp.Net.DependencyInjection\SmartMapp.Net.DependencyInjection.csproj" />
+    <ProjectReference Include="..\SmartMapp.Net.Tests.ExternalAssemblyFixture\SmartMapp.Net.Tests.ExternalAssemblyFixture.csproj" />
+    <!-- Build-order-only reference so ConsoleSampleSmokeTests can spawn the freshly-built
+         sample via 'dotnet run [no-build]'. ReferenceOutputAssembly=false keeps the sample's
+         Program entry point and Models namespace out of the test assembly. -->
+    <ProjectReference Include="..\..\samples\SmartMapp.Net.Samples.Console\SmartMapp.Net.Samples.Console.csproj" ReferenceOutputAssembly="false" />
+    <!-- Full compile reference to the MinimalApi sample so WebApplicationFactory[Program]
+         can compose the test HTTP pipeline in-process (Sprint 8 · S8-T10). The sample's
+         Program class is declared 'public partial' so the test can use it as TEntryPoint. -->
+    <ProjectReference Include="..\..\samples\SmartMapp.Net.Samples.MinimalApi\SmartMapp.Net.Samples.MinimalApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <!-- Microsoft.Extensions.Hosting (concrete, not Abstractions) is used by the S8-T05
+         host smoke test to build a full IHost and call StartAsync in-process. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <!-- EF Core InMemory is used by the S8-T06 SelectAs projection integration test to
+         verify the generated Expression<Func<TOrigin, TTarget>> is EF-translatable
+         (ToListAsync + ToQueryString round-trip). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <!-- Drives the Sprint 8 · S8-T10 MinimalApiSampleIntegrationTests via
+         WebApplicationFactory[Program] (in-memory TestServer against the sample's HTTP pipeline). -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
 </Project>

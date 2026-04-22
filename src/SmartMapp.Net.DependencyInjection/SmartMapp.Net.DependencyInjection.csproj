@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1;net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>SmartMapp.Net.DependencyInjection</RootNamespace>
+    <AssemblyName>SmartMapp.Net.DependencyInjection</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>SmartMapp.Net.DependencyInjection</PackageId>
+    <Description>Microsoft.Extensions.DependencyInjection integration for SmartMapp.Net — registers ISculptor, IMapper&lt;,&gt;, DI-resolved providers and transformers, and startup validation for the SmartMapp.Net object-to-object mapper.</Description>
+    <PackageTags>mapping;di;smartmapp;sculptor;dependencyinjection;aspnetcore</PackageTags>
+    <PackageReadmeFile>PackageReadme.md</PackageReadmeFile>
+    <PackageReleaseNotes>v1.0.0-rc.1 — Release candidate for v1.0. AddSculptor() + lifetime / options overloads, IMapper&lt;,&gt; open-generic registration, DI-resolved IValueProvider&lt;,,&gt; / ITypeTransformer&lt;,&gt; with scope-aware activation, SculptorStartupValidator hosted service (fail-fast on invalid blueprints), SelectAs&lt;T&gt;(IQueryable, ISculptor) EF Core-translatable projection, and MapTo&lt;T&gt;() / ambient-SelectAs&lt;T&gt;() extensions. See CHANGELOG.md for the complete list.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SmartMapp.Net.Tests.Unit" />
+    <InternalsVisibleTo Include="SmartMapp.Net.Tests.Integration" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartMapp.Net\SmartMapp.Net.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Abstractions-only dependency set keeps the package framework-agnostic:
+         Hosting.Abstractions — IHostedService surface consumed by SculptorStartupValidator (S8-T05).
+         Logging.Abstractions — ILogger<T> sink for the startup validator's success / warning / error events (S8-T05). -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Properties\PackageReadme.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

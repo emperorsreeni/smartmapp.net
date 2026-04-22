@@ -88,13 +88,23 @@ internal static class MappingExecutor
 
     /// <summary>
     /// Creates a fresh <see cref="MappingScope"/> initialised from the forged options.
+    /// When <paramref name="serviceProvider"/> is <c>null</c>, falls back to the current
+    /// <see cref="AmbientServiceProvider.Current"/> value — populated by the DI package
+    /// immediately before invoking <c>Map</c> — so sculptors resolved from DI automatically
+    /// flow their request scope into value providers and type transformers without the
+    /// caller needing to thread <see cref="IServiceProvider"/> manually (spec §11.4, S8-T04).
+    /// The scope's <see cref="MappingScope.ProviderResolver"/> is populated from
+    /// <see cref="Configuration.SculptorOptions.ProviderResolver"/> so downstream
+    /// <see cref="Abstractions.IValueProvider"/>-deferred activations honour the user's
+    /// configured resolver strategy.
     /// </summary>
     internal static MappingScope CreateScope(ForgedSculptorConfiguration config, IServiceProvider? serviceProvider = null)
     {
         return new MappingScope
         {
             MaxDepth = config.Options.MaxRecursionDepth,
-            ServiceProvider = serviceProvider,
+            ServiceProvider = serviceProvider ?? AmbientServiceProvider.Current,
+            ProviderResolver = config.Options.ProviderResolver,
         };
     }
 }

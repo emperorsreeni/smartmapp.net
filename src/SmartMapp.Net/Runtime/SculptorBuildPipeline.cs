@@ -38,6 +38,14 @@ internal sealed class SculptorBuildPipeline
             inline.Apply(inputs.BlueprintBuilder);
         }
 
+        // Stage 3b — Drain inline compositions (Sprint 8 · S8-T08). The callback runs against the
+        // shared IBlueprintBuilder so options.Compose<T>(...) ends up in BlueprintBuilder.Compositions
+        // just like SculptorBuilder.Compose<T>() does.
+        foreach (var inline in inputs.InlineCompositions)
+        {
+            inline.Apply(inputs.BlueprintBuilder);
+        }
+
         // Stage 4 — Apply MappingBlueprint instances (user-supplied)
         foreach (var instance in inputs.BlueprintInstances)
         {
@@ -96,6 +104,52 @@ internal sealed class SculptorBuildPipeline
             mergedBlueprints.Add(merged);
         }
 
+        // Stage 6c — Materialise composition rules into CompositionBlueprint records (S8-T08).
+        // Each FromOrigin<TOrigin>() call's BindingConfiguration is built into a partial Blueprint
+        // and convention-merged so FromOrigin<User>() with no explicit .Property(...) calls still
+        // auto-maps User's members to target members by name. The resulting CompositionBlueprints
+        // live on the forged configuration alongside regular blueprints — they do NOT occupy the
+        // (TOrigin, TTarget) pair slot, so a user can still register `Bind<User, Dashboard>()`
+        // independently.
+        var compositionBlueprints = new List<Composition.CompositionBlueprint>();
+        var seenCompositionTargets = new HashSet<Type>();
+        foreach (var rule in inputs.BlueprintBuilderImpl.Compositions)
+        {
+            if (!seenCompositionTargets.Add(rule.TargetType))
+            {
+                throw new Diagnostics.BlueprintValidationException(
+                    $"Multiple composition rules registered for target '{rule.TargetType.FullName}'. " +
+                    "Each target type supports exactly one composition; merge origins into a single Compose<T>() call " +
+                    "(spec §S8-T08 Constraints: ambiguous match).");
+            }
+
+            var origins = new List<Composition.CompositionOrigin>(rule.Origins.Count);
+            foreach (var (originType, originConfig) in rule.Origins)
+            {
+                // Spec §S8-T08 Technical Considerations bullet 3: "Reserve the per-origin
+                // .Transform, .When, .OnlyIf surfaces for Sprint 15 — stubs throw
+                // NotSupportedException for clarity." The FromOrigin callback accepts the full
+                // IBindingRule<TOrigin, TTarget> surface (to preserve API continuity), so we
+                // guard at forge time by inspecting the accumulated configuration and throwing
+                // with a clear sprint-deferred message when any reserved feature is found.
+                ValidateCompositionOriginConfig(rule.TargetType, originType, originConfig);
+
+                var partialRaw = Abstractions.BlueprintBuilder.BuildBlueprintFromConfig(originConfig);
+                var partialMerged = MergeConventionLinks(partialRaw, conventionPipeline, typeModelCache);
+                origins.Add(new Composition.CompositionOrigin
+                {
+                    OriginType = originType,
+                    PartialBlueprint = partialMerged,
+                });
+            }
+
+            compositionBlueprints.Add(new Composition.CompositionBlueprint
+            {
+                TargetType = rule.TargetType,
+                Origins = origins,
+            });
+        }
+
         // Stage 7 — Instantiate transformer types and populate the registry
         var transformerRegistry = new TypeTransformerRegistry();
         TypeTransformerRegistryDefaults.RegisterDefaults(transformerRegistry);
@@ -107,7 +161,7 @@ internal sealed class SculptorBuildPipeline
         // concrete typed transformer.
         for (var i = 0; i < mergedBlueprints.Count; i++)
         {
-            mergedBlueprints[i] = ResolveDeferredTransformers(mergedBlueprints[i], transformerRegistry);
+            mergedBlueprints[i] = ResolveDeferredTransformers(mergedBlueprints[i], transformerRegistry, inputs.Options);
         }
 
         // Stage 8 — Build the compiler, delegate cache, and pre-compile
@@ -150,7 +204,8 @@ internal sealed class SculptorBuildPipeline
             typeModelCache: typeModelCache,
             delegateCache: delegateCache,
             compiler: compiler,
-            transformerRegistry: transformerRegistry);
+            transformerRegistry: transformerRegistry,
+            compositionBlueprints: compositionBlueprints);
 
         return new Sculptor(config);
     }
@@ -237,14 +292,33 @@ internal sealed class SculptorBuildPipeline
     }
 
     /// <summary>
-    /// Walks the links of <paramref name="blueprint"/> and replaces any
-    /// <see cref="AttributeDeferredTypeTransformer"/> placeholder (emitted by
-    /// <see cref="Conventions.AttributeConvention"/> for <c>[TransformWith]</c>) with the concrete
-    /// transformer resolved from <paramref name="registry"/>. If the registry cannot produce a
-    /// matching transformer, the placeholder is dropped (null transformer) so downstream
-    /// <see cref="Compilation.TransformerExpressionHelper"/> can fall back to Convert-based coercion.
+    /// Forge-time guard for composition origin configurations — rejects per-origin uses of the
+    /// <c>.When</c> / <c>.OnlyIf</c> / <c>.TransformWith</c> surfaces that the Sprint 8 dispatcher
+    /// does not honour. Reserved for Sprint 15 per spec §S8-T08 Technical Considerations bullet 3.
     /// </summary>
-    private static Blueprint ResolveDeferredTransformers(Blueprint blueprint, TypeTransformerRegistry registry)
+    private static void ValidateCompositionOriginConfig(Type targetType, Type originType, Abstractions.BindingConfiguration config)
+    {
+        static NotSupportedException Reject(Type target, Type origin, string feature) => new(
+            $"FromOrigin<{origin.Name}>() for composition target '{target.Name}' used the '{feature}' surface, " +
+            "which is reserved for Sprint 15. The Sprint 8 composition dispatcher only honours per-origin " +
+            ".Property(...) bindings and convention-discovered links. Remove the call or wait for the Sprint 15 " +
+            "release (spec §S8-T08 Technical Considerations bullet 3).");
+
+        if (config.Condition is not null)
+            throw Reject(targetType, originType, ".When(...)");
+
+        foreach (var prop in config.PropertyConfigs)
+        {
+            if (prop.PreCondition is not null)
+                throw Reject(targetType, originType, ".OnlyIf(...)");
+            if (prop.Condition is not null)
+                throw Reject(targetType, originType, ".When(...) (property-level)");
+            if (prop.TransformerType is not null || prop.InlineTransform is not null)
+                throw Reject(targetType, originType, ".TransformWith(...)");
+        }
+    }
+
+    private static Blueprint ResolveDeferredTransformers(Blueprint blueprint, TypeTransformerRegistry registry, Configuration.SculptorOptions options)
     {
         var needsRewrite = false;
         foreach (var link in blueprint.Links)
@@ -266,9 +340,12 @@ internal sealed class SculptorBuildPipeline
                 continue;
             }
 
-            // Prefer the transformer type declared on the attribute; fall back to a registry
-            // lookup based on the link's (origin, target) member types.
-            var concrete = TryResolveFromDeclaredType(deferred.TransformerType)
+            // Per spec §11.4 (S8-T04): route transformer instantiation through the configured
+            // IProviderResolver so DI-wired containers can satisfy transformer constructor
+            // dependencies (e.g. ILogger<T>, registered singletons). Falls back to registry
+            // lookup by (origin, target) member types when the declared type cannot be
+            // resolved — matches Sprint 7 behaviour.
+            var concrete = TryResolveFromDeclaredType(deferred.TransformerType, options.ProviderResolver)
                 ?? registry.GetTransformer(OriginMemberType(link), TargetMemberType(link));
 
             rewritten.Add(link with { Transformer = concrete });
@@ -277,13 +354,18 @@ internal sealed class SculptorBuildPipeline
         return blueprint with { Links = rewritten };
     }
 
-    private static ITypeTransformer? TryResolveFromDeclaredType(Type transformerType)
+    private static ITypeTransformer? TryResolveFromDeclaredType(Type transformerType, IProviderResolver resolver)
     {
         if (transformerType.IsAbstract || transformerType.IsInterface) return null;
-        if (transformerType.GetConstructor(Type.EmptyTypes) is null) return null;
         try
         {
-            return (ITypeTransformer?)Activator.CreateInstance(transformerType);
+            // The resolver's IServiceProvider argument is null here because forge-time
+            // transformer resolution has no ambient request scope. The DI package's
+            // DependencyInjectionProviderFactory captures the root IServiceProvider internally
+            // and uses ActivatorUtilities.CreateInstance so non-default constructors can be
+            // satisfied from root-scoped / singleton services. Transformers that require
+            // request-scoped dependencies remain unsupported in Sprint 8 (see docs).
+            return resolver.Resolve(transformerType, serviceProvider: null) as ITypeTransformer;
         }
         catch
         {

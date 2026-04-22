@@ -77,17 +77,19 @@ Performance is achieved through IL Emit code generation, adaptive hot-path promo
 
 ---
 
-## What Sets SmartMapp.Net Apart
+## Comparison vs AutoMapper
 
-| Dimension | Traditional Mapping Libraries | SmartMapp.Net |
+| Dimension | AutoMapper | SmartMapp.Net |
 |---|---|---|
-| **Setup** | Explicit registration per type pair | Zero-config auto-discovery; opt-in overrides |
-| **Performance** | Reflection + expression trees | IL Emit + source gen + SIMD |
+| **Setup** | Explicit profile registration per type pair | Zero-config auto-discovery; opt-in overrides |
+| **Performance** | Reflection + expression trees | IL Emit + source gen + SIMD (roadmap) |
 | **Memory** | Allocations on every call | Near-zero allocation (pooled) |
 | **AOT / Trimming** | Generally unsupported | Fully supported via source gen |
 | **Parallelism** | Manual or unsupported | Automatic parallel collections |
-| **Diagnostics** | Basic configuration validation | Full telemetry, atlas visualizer, mapping inspection |
-| **Streaming** | Generally unsupported | `IAsyncEnumerable` native |
+| **Diagnostics** | Basic configuration validation | Full telemetry, atlas visualizer, `Inspect<S,D>()` |
+| **Streaming** | Generally unsupported | `IAsyncEnumerable` native (`MapStream`) |
+| **Composition** | None out-of-the-box | `Compose<T>(params object[])` multi-origin |
+| **Projection** | `ProjectTo<T>()` requires extension | `SelectAs<T>(sculptor)` on any `IQueryable` |
 | **Modern C#** | Partial record/init support | Full record, `init`, `required` member support |
 | **Extensibility** | Limited plugin models | Addon system, filter pipeline, hooks, events |
 
@@ -95,34 +97,23 @@ Performance is achieved through IL Emit code generation, adaptive hot-path promo
 
 ## Quick Start
 
-### Install
-
 ```shell
 dotnet add package SmartMapp.Net
 dotnet add package SmartMapp.Net.DependencyInjection
 ```
 
-### Register
-
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddSculptor();
-```
+builder.Services.AddSculptor();                      // zero-config auto-discovery
 
-### Use
-
-```csharp
+var app = builder.Build();
 app.MapGet("/orders/{id}", async (int id, ISculptor sculptor, AppDbContext db) =>
 {
-    var order = await db.Orders
-        .Include(o => o.Customer)
-        .Include(o => o.Lines)
+    var order = await db.Orders.Include(o => o.Customer).Include(o => o.Lines)
         .FirstOrDefaultAsync(o => o.Id == id);
-
-    return order is null
-        ? Results.NotFound()
-        : Results.Ok(sculptor.Map<Order, OrderDto>(order));
+    return order is null ? Results.NotFound() : Results.Ok(sculptor.Map<Order, OrderDto>(order));
 });
+app.Run();
 ```
 
 ### Customize (optional)
@@ -169,6 +160,15 @@ public class OrderBlueprint : MappingBlueprint
 ## Architecture
 
 ![Smartmapp.net Architecture](smartmapp-architecture.png)
+
+
+
+## Samples
+
+| Sample | Description |
+|---|---|
+| [`samples/SmartMapp.Net.Samples.Console`](samples/SmartMapp.Net.Samples.Console) | Runnable console walkthrough covering zero-config flat mapping, flattening, collections, polymorphism, inline `Bind<S,D>`, blueprint classes, `[MappedBy<T>]` / `[Unmapped]` attributes, the `MapTo<T>()` extension, and bidirectional mapping. Run with `dotnet run --project samples/SmartMapp.Net.Samples.Console`. |
+| [`samples/SmartMapp.Net.Samples.MinimalApi`](samples/SmartMapp.Net.Samples.MinimalApi) | Production-shaped ASP.NET Minimal API + EF Core InMemory: DI registration, `SelectAs<OrderListDto>(sculptor)` server-side projection on `/orders`, `ISculptor.Map<Order, OrderDto>` with a DI-resolved `TaxCalculatorProvider` on `/orders/{id}`, and a `Testing` launch profile that demonstrates `SculptorStartupValidator` fail-fast. Run with `dotnet run --project samples/SmartMapp.Net.Samples.MinimalApi`. |
 
 
 
@@ -315,6 +315,26 @@ dotnet run --project benchmarks/SmartMapp.Net.Benchmarks --configuration Release
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+
+
+## Contributing
+
+Contributions are welcome! Start by reading [`docs/requirements/spec.md`](docs/requirements/spec.md)
+for the authoritative library contract and [`docs/requirements/implementation-plan.md`](docs/requirements/implementation-plan.md)
+for the sprint-by-sprint roadmap. Current sprint task pads live under
+`docs/requirements/sprint-*.md`.
+
+Before opening a pull request:
+
+1. `dotnet restore && dotnet build -warnaserror`
+2. `dotnet test` — the Sprint 8 test suite runs in under 10 seconds locally.
+3. Run the samples — `dotnet run --project samples/SmartMapp.Net.Samples.Console` and
+   `dotnet run --project samples/SmartMapp.Net.Samples.MinimalApi` should both succeed.
+4. Add an entry to [`CHANGELOG.md`](CHANGELOG.md) under the `[Unreleased]` section.
+
+New features should ship with tests and spec references; bug fixes should include a
+regression test and reference the relevant `§` in the spec.
 
 
 

@@ -184,14 +184,19 @@ public class SculptorRuntimeTests
     }
 
     [Fact]
-    public void Compose_MultipleOrigins_Throws_NotSupported()
+    public void Compose_MultipleOrigins_WithoutRegisteredComposition_Throws_MappingConfigurationException()
     {
+        // Sprint 7 originally asserted NotSupportedException here; Sprint 8 · S8-T08 wired
+        // multi-origin dispatch through CompositionDispatcher, which now produces an actionable
+        // MappingConfigurationException pointing at the missing options.Compose<T>() registration.
+        // A two-origin call with the same type also surfaces the ambiguous-match guard — either
+        // way, the old NotSupportedException is gone.
         var sculptor = ForgeOrderSculptor();
         var a = new Sprint7Order { Id = 1 };
         var b = new Sprint7Order { Id = 2 };
 
         var act = () => sculptor.Compose<Sprint7OrderDto>(a, b);
-        act.Should().Throw<NotSupportedException>();
+        act.Should().Throw<SmartMapp.Net.MappingConfigurationException>();
     }
 
     [Fact]

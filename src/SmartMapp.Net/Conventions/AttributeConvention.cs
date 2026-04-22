@@ -151,15 +151,15 @@ internal sealed class AttributeDeferredValueProvider : IValueProvider
     /// <inheritdoc />
     public object? Provide(object origin, object target, string targetMemberName, MappingScope scope)
     {
-        if (scope.ServiceProvider is null)
+        // Per spec §11.4 (S8-T04): same resolution path as DeferredValueProvider — route through
+        // the scope's IProviderResolver so DI-registered providers are injected, with Activator
+        // fallback for builder-only / non-DI contexts.
+        var instance = scope.ProviderResolver.Resolve(ProviderType, scope.ServiceProvider);
+        if (instance is not IValueProvider resolved)
+        {
             throw new InvalidOperationException(
-                $"Cannot resolve provider '{ProviderType.Name}' declared via [ProvideWith]: " +
-                "no ServiceProvider is configured on the MappingScope.");
-
-        var resolved = scope.ServiceProvider.GetService(ProviderType) as IValueProvider
-            ?? throw new InvalidOperationException(
-                $"Cannot resolve provider '{ProviderType.Name}' declared via [ProvideWith] " +
-                "from the configured ServiceProvider.");
+                $"Type '{ProviderType.FullName}' declared via [ProvideWith] was resolved but does not implement IValueProvider.");
+        }
 
         return resolved.Provide(origin, target, targetMemberName, scope);
     }

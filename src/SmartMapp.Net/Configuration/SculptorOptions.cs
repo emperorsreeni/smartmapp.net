@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using SmartMapp.Net.Abstractions;
+using SmartMapp.Net.Runtime;
 
 namespace SmartMapp.Net.Configuration;
 
@@ -67,12 +68,35 @@ public sealed class SculptorOptions
     /// Gets or sets a value indicating whether all blueprints are validated when the sculptor is forged.
     /// Defaults to <c>true</c>.
     /// </summary>
+    /// <remarks>
+    /// Spec §S8-T05 Outputs bullet 3 documents the intended default as "true when
+    /// <c>IHostEnvironment.IsDevelopment()</c>, false otherwise". The option itself always reads
+    /// <c>true</c> so builder-only (non-host) consumers keep fail-fast semantics; the
+    /// environment-aware gating is applied by <c>SculptorStartupValidator</c> in the
+    /// <c>SmartMapp.Net.DependencyInjection</c> package and only kicks in when the user did
+    /// not set this property explicitly (tracked via <see cref="IsValidateOnStartupExplicitlySet"/>).
+    /// </remarks>
     public bool ValidateOnStartup
     {
         get => _validateOnStartup;
-        set { ThrowIfFrozen(); _validateOnStartup = value; }
+        set
+        {
+            ThrowIfFrozen();
+            _validateOnStartup = value;
+            _validateOnStartupExplicit = true;
+        }
     }
     private bool _validateOnStartup = true;
+    private bool _validateOnStartupExplicit;
+
+    /// <summary>
+    /// Gets a value indicating whether <see cref="ValidateOnStartup"/> has been assigned by the
+    /// user. Consumed by <c>SculptorStartupValidator</c> (in
+    /// <c>SmartMapp.Net.DependencyInjection</c>) to decide whether the environment-aware default
+    /// (skip in non-Development hosts) should be applied. Stays <c>false</c> when the option
+    /// retains its constructed default (<c>true</c>).
+    /// </summary>
+    public bool IsValidateOnStartupExplicitlySet => _validateOnStartupExplicit;
 
     /// <summary>
     /// Gets or sets a value indicating whether unlinked target members are reported as errors.
@@ -95,6 +119,56 @@ public sealed class SculptorOptions
         set { ThrowIfFrozen(); _throwOnUnlinkedMembers = value; }
     }
     private bool _throwOnUnlinkedMembers;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a new sculptor should be forged for every
+    /// DI scope or transient resolve when the sculptor is registered via
+    /// <c>AddSculptor(ServiceLifetime.Scoped)</c> or <c>AddSculptor(ServiceLifetime.Transient)</c>.
+    /// Defaults to <c>false</c> — a single global sculptor is shared across scopes/resolves
+    /// even when the handle lifetime is not Singleton. Set to <c>true</c> only when a mapping
+    /// configuration legitimately varies per request or per scope.
+    /// </summary>
+    /// <remarks>
+    /// Per spec §11.2. When the handle is registered as <c>ServiceLifetime.Singleton</c>,
+    /// this flag has no effect. A future analyzer (Sprint 20) will warn if this is enabled
+    /// together with <c>ServiceLifetime.Singleton</c>.
+    /// </remarks>
+    public bool AllowPerScopeRebuild
+    {
+        get => _allowPerScopeRebuild;
+        set { ThrowIfFrozen(); _allowPerScopeRebuild = value; }
+    }
+    private bool _allowPerScopeRebuild;
+
+    /// <summary>
+    /// Gets or sets the strategy used to instantiate DI-deferred
+    /// <see cref="IValueProvider"/> and <see cref="ITypeTransformer"/> types referenced via
+    /// <c>p.From&lt;T&gt;()</c>, <c>p.TransformWith&lt;T&gt;()</c>, <c>[ProvideWith]</c>, and
+    /// <c>[TransformWith]</c>. Defaults to <see cref="DefaultProviderResolver.Instance"/>,
+    /// which tries <see cref="IServiceProvider.GetService(Type)"/> and falls back to
+    /// <see cref="Activator.CreateInstance(Type)"/> for parameterless-constructor types.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Introduced in Sprint 8 · S8-T04 per spec §11.4. The
+    /// <c>SmartMapp.Net.DependencyInjection</c> package installs a richer resolver
+    /// (<c>DependencyInjectionProviderFactory</c>) that uses
+    /// <c>Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance</c> so
+    /// types with non-default constructor dependencies can still be activated when they are
+    /// not registered in the container. Third-party containers (Autofac, Lamar, …) can plug
+    /// in their own <see cref="IProviderResolver"/> by assigning this property before calling
+    /// <c>SculptorBuilder.Forge()</c>.
+    /// </para>
+    /// <para>
+    /// Setting the property to <c>null</c> reverts to <see cref="DefaultProviderResolver.Instance"/>.
+    /// </para>
+    /// </remarks>
+    public IProviderResolver ProviderResolver
+    {
+        get => _providerResolver;
+        set { ThrowIfFrozen(); _providerResolver = value ?? DefaultProviderResolver.Instance; }
+    }
+    private IProviderResolver _providerResolver = DefaultProviderResolver.Instance;
 
     /// <summary>
     /// Gets a value indicating whether the options have been frozen (post-<c>Forge()</c>).
@@ -229,6 +303,42 @@ public sealed class SculptorOptions
         _inlineBindings.Add(new InlineBindingRegistration(pair, builder =>
         {
             var rule = builder.Bind<TOrigin, TTarget>();
+            configure(rule);
+        }));
+        return this;
+    }
+
+    private readonly List<InlineCompositionRegistration> _inlineCompositions = new();
+
+    /// <summary>
+    /// Gets the inline composition registrations queued via
+    /// <see cref="Compose{TTarget}(Action{ICompositionRule{TTarget}})"/> — consumed by the
+    /// forge pipeline (Sprint 8 · S8-T08) to produce
+    /// <see cref="Composition.CompositionBlueprint"/> records on the forged configuration.
+    /// </summary>
+    internal IReadOnlyList<InlineCompositionRegistration> InlineCompositions => _inlineCompositions;
+
+    /// <summary>
+    /// Registers a multi-origin composition rule for <typeparamref name="TTarget"/>. The
+    /// callback receives an <see cref="ICompositionRule{TTarget}"/> on which the user can call
+    /// <see cref="ICompositionRule{TTarget}.FromOrigin{TOrigin}"/> for each contributing origin
+    /// type. Executed during <c>SculptorBuilder.Forge()</c> against the shared builder, so
+    /// rules registered via <c>options.Compose&lt;T&gt;(...)</c> behave identically to those
+    /// registered via <c>SculptorBuilder.Compose&lt;T&gt;()</c> — spec §S8-T08 Acceptance
+    /// bullet 7.
+    /// </summary>
+    /// <typeparam name="TTarget">The composed target type.</typeparam>
+    /// <param name="configure">Composition rule configuration callback.</param>
+    /// <returns>This options instance for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure"/> is <c>null</c>.</exception>
+    public SculptorOptions Compose<TTarget>(Action<ICompositionRule<TTarget>> configure)
+    {
+        ThrowIfFrozen();
+        if (configure is null) throw new ArgumentNullException(nameof(configure));
+
+        _inlineCompositions.Add(new InlineCompositionRegistration(typeof(TTarget), builder =>
+        {
+            var rule = builder.Compose<TTarget>();
             configure(rule);
         }));
         return this;

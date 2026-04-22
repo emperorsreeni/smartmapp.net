@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using SmartMapp.Net.Abstractions;
+using SmartMapp.Net.Runtime;
 
 namespace SmartMapp.Net;
 
@@ -30,6 +32,15 @@ public sealed class MappingScope
     public IServiceProvider? ServiceProvider { get; init; }
 
     /// <summary>
+    /// Gets or sets the <see cref="IProviderResolver"/> used to instantiate DI-deferred value
+    /// providers and type transformers for this mapping call. Defaults to
+    /// <see cref="DefaultProviderResolver.Instance"/>. Populated by
+    /// <see cref="MappingExecutor.CreateScope"/> from
+    /// <see cref="Configuration.SculptorOptions.ProviderResolver"/>.
+    /// </summary>
+    public IProviderResolver ProviderResolver { get; init; } = DefaultProviderResolver.Instance;
+
+    /// <summary>
     /// Gets or sets the cancellation token propagated to async operations.
     /// </summary>
     public CancellationToken CancellationToken { get; init; }
@@ -58,6 +69,7 @@ public sealed class MappingScope
             CurrentDepth = CurrentDepth + 1,
             MaxDepth = MaxDepth,
             ServiceProvider = ServiceProvider,
+            ProviderResolver = ProviderResolver,
             CancellationToken = CancellationToken,
         };
         child._visited = _visited;

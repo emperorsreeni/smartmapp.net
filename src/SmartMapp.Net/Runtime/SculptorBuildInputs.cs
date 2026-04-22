@@ -16,6 +16,7 @@ internal sealed class SculptorBuildInputs
     internal required IReadOnlyList<MappingBlueprint> BlueprintInstances { get; init; }
     internal required IReadOnlyList<Type> TransformerTypes { get; init; }
     internal required IReadOnlyList<InlineBindingRegistration> InlineBindings { get; init; }
+    internal required IReadOnlyList<InlineCompositionRegistration> InlineCompositions { get; init; }
     internal required IBlueprintBuilder BlueprintBuilder { get; init; }
     internal required BlueprintBuilder BlueprintBuilderImpl { get; init; }
 }

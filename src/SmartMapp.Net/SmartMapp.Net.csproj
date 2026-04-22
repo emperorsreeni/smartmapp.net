@@ -6,13 +6,20 @@
     <AssemblyName>SmartMapp.Net</AssemblyName>
     <IsPackable>true</IsPackable>
     <PackageId>SmartMapp.Net</PackageId>
-    <Description>High-performance, zero-configuration object-to-object mapping library for .NET.</Description>
-    <PackageTags>mapper;mapping;automapper;dto;object-mapping</PackageTags>
+    <Description>High-performance, zero-configuration object-to-object mapping library for .NET. Auto-discovers type pairs, compiles expression-tree mappers, supports flattening / unflattening / polymorphism / collections / IQueryable projection / composition / bidirectional mapping — with first-class DI integration via the SmartMapp.Net.DependencyInjection companion package.</Description>
+    <PackageTags>mapper;mapping;automapper;dto;object-mapping;projection;dependency-injection</PackageTags>
+    <PackageReadmeFile>PackageReadme.md</PackageReadmeFile>
+    <PackageReleaseNotes>v1.0.0-rc.1 — Release candidate for v1.0. Completes the Sprint 8 DI integration surface: AddSculptor(), IMapper&lt;,&gt; resolution, DI-resolved providers / transformers, SculptorStartupValidator hosted service, SelectAs&lt;T&gt;(IQueryable), MapTo&lt;T&gt;() + ambient SelectAs&lt;T&gt;() extensions, Compose&lt;T&gt;(params object[]) multi-origin dispatch, and two shipping samples (Console + ASP.NET Minimal API). See CHANGELOG.md for the complete list.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="SmartMapp.Net.Tests.Unit" />
     <InternalsVisibleTo Include="SmartMapp.Net.Benchmarks" />
+    <InternalsVisibleTo Include="SmartMapp.Net.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Properties\PackageReadme.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">

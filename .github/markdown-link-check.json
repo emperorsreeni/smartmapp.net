@@ -1,0 +1,12 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^https://img.shields.io/" },
+    { "pattern": "^https://github.com/user/smartmapp.net/" },
+    { "pattern": "^https://www.nuget.org/packages/SmartMapp.Net" }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "15s",
+  "aliveStatusCodes": [200, 206, 301, 302, 403]
+}

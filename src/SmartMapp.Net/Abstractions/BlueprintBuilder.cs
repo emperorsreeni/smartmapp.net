@@ -1,6 +1,7 @@
 using System.Reflection;
 using SmartMapp.Net.Caching;
 using SmartMapp.Net.Compilation;
+using SmartMapp.Net.Composition;
 using SmartMapp.Net.Diagnostics;
 
 namespace SmartMapp.Net.Abstractions;
@@ -14,11 +15,19 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
 {
     private readonly List<BindingConfiguration> _bindings = new();
     private readonly HashSet<TypePair> _registeredPairs = new();
+    private readonly List<ICompositionRuleInternal> _compositions = new();
 
     /// <summary>
     /// Gets all accumulated binding configurations.
     /// </summary>
     internal IReadOnlyList<BindingConfiguration> Bindings => _bindings;
+
+    /// <summary>
+    /// Gets the accumulated composition rules registered through <see cref="Compose{TTarget}"/>
+    /// or <c>options.Compose&lt;T&gt;()</c>. Consumed by the forge pipeline (Sprint 8 · S8-T08)
+    /// to produce <see cref="Composition.CompositionBlueprint"/> records.
+    /// </summary>
+    internal IReadOnlyList<ICompositionRuleInternal> Compositions => _compositions;
 
     /// <summary>
     /// Gets the inheritance resolver produced during <see cref="Build"/>.
@@ -65,8 +74,13 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
     /// <inheritdoc />
     public ICompositionRule<TTarget> Compose<TTarget>()
     {
-        // Non-null stub per Sprint 7 AC — execution lands in Sprint 15.
-        return new CompositionRule<TTarget>();
+        // Sprint 8 · S8-T08: stash the rule on the builder so the forge pipeline can later
+        // materialise it into a CompositionBlueprint. Each Compose<TTarget>() call produces a
+        // fresh CompositionRule — multiple calls for the same target create separate rules,
+        // which the pipeline flattens / validates for ambiguity during forge.
+        var rule = new CompositionRuleBuilder<TTarget>();
+        _compositions.Add(rule);
+        return rule;
     }
 
     /// <summary>
@@ -134,6 +148,14 @@ internal sealed class BlueprintBuilder : IBlueprintBuilder
 
         return blueprints;
     }
+
+    /// <summary>
+    /// Converts a single <see cref="BindingConfiguration"/> into an immutable <see cref="Blueprint"/>.
+    /// Exposed to the forge pipeline so composition origin partials (Sprint 8 · S8-T08) can reuse
+    /// the same link-building logic as ordinary bindings.
+    /// </summary>
+    internal static Blueprint BuildBlueprintFromConfig(BindingConfiguration config)
+        => BuildBlueprint(config);
 
     /// <summary>
     /// Converts a single <see cref="BindingConfiguration"/> into an immutable <see cref="Blueprint"/>.
@@ -359,7 +381,11 @@ internal sealed class NullValueProvider : IValueProvider
 }
 
 /// <summary>
-/// A value provider placeholder for DI-resolved providers. The actual provider is resolved at mapping time.
+/// A value provider placeholder for DI-resolved providers. The actual provider is resolved at
+/// mapping time via <see cref="MappingScope.ProviderResolver"/> with
+/// <see cref="MappingScope.ServiceProvider"/> — falling back to
+/// <see cref="Activator.CreateInstance(Type)"/> when the type is not registered in the
+/// container or when no container is wired into the sculptor (builder-only usage).
 /// </summary>
 internal sealed class DeferredValueProvider : IValueProvider
 {
@@ -379,13 +405,16 @@ internal sealed class DeferredValueProvider : IValueProvider
     /// <inheritdoc />
     public object? Provide(object origin, object target, string targetMemberName, MappingScope scope)
     {
-        if (scope.ServiceProvider is null)
+        // Per spec §11.4 (S8-T04): route through the scope's IProviderResolver. The default
+        // resolver uses scope.ServiceProvider.GetService + Activator fallback; the DI package
+        // installs a richer resolver that uses ActivatorUtilities.CreateInstance so types with
+        // constructor dependencies still activate when they aren't registered explicitly.
+        var instance = scope.ProviderResolver.Resolve(ProviderType, scope.ServiceProvider);
+        if (instance is not IValueProvider provider)
+        {
             throw new InvalidOperationException(
-                $"Cannot resolve DI provider '{ProviderType.Name}': no ServiceProvider is configured.");
-
-        var provider = scope.ServiceProvider.GetService(ProviderType) as IValueProvider
-            ?? throw new InvalidOperationException(
-                $"Cannot resolve DI provider '{ProviderType.Name}' from ServiceProvider.");
+                $"Type '{ProviderType.FullName}' was resolved but does not implement IValueProvider.");
+        }
 
         return provider.Provide(origin, target, targetMemberName, scope);
     }

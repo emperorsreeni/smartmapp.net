@@ -22,8 +22,34 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Microsoft.Extensions (DI, Hosting, Options, Logging) — used by SmartMapp.Net.DependencyInjection -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <!-- EF Core InMemory — test-only, drives the S8-T06 SelectAs projection integration test -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <!-- EF Core SQLite — test-only, drives the S8-T11 SelectAs SQL-shape assertion (real
+         ToQueryString() output for spec §S8-T11 AC bullet 5). InMemory doesn't emit SQL. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+    <!-- ASP.NET Core MVC Testing — drives the Sprint 8 · S8-T10 MinimalApi sample integration tests
+         (WebApplicationFactory<Program> + IHost.StartAsync fail-fast coverage). -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <!-- S8-T12 benchmarks: AutoMapper comparison baseline (test/bench-only dependency). -->
+    <PackageVersion Include="AutoMapper" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- S8-T12 RC polish: Source Link. Referenced by Directory.Build.props for every
+         packable project; version must live here under central-package-management. -->
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

@@ -131,6 +131,7 @@ public sealed class SculptorBuilder : ISculptorBuilder
             BlueprintInstances = _options.BlueprintInstances,
             TransformerTypes = _options.TransformerTypes,
             InlineBindings = _options.InlineBindings,
+            InlineCompositions = _options.InlineCompositions,
             BlueprintBuilder = _blueprintBuilder,
             BlueprintBuilderImpl = _blueprintBuilder,
         };
