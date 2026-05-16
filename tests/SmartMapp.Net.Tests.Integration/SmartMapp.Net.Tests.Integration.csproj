@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sprint 8 · S8-T11 — Integration Test Suite.
+
+    Exercises every Sprint 8 deliverable together under realistic hosting + DI scenarios per
+    spec §17.1 integration categories: AddSculptor overloads, IMapper<,> / provider resolution,
+    EF Core `SelectAs` translation, ASP.NET Minimal API end-to-end via WebApplicationFactory,
+    startup validation, Compose multi-origin, `MapTo<T>` ambient, and a 10K-iteration thread-
+    safety stress run (§17.2.5). Runs alongside the existing unit suite; no component-level
+    behaviour regression is re-tested here (unit tests cover that), only composed behaviour.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartMapp.Net\SmartMapp.Net.csproj" />
+    <ProjectReference Include="..\..\src\SmartMapp.Net.DependencyInjection\SmartMapp.Net.DependencyInjection.csproj" />
+    <!--
+      The MinimalApi sample's `public partial class Program { }` is the TEntryPoint for
+      WebApplicationFactory<Program> in the AspNetCore end-to-end integration tests.
+      ReferenceOutputAssembly=true (default) is required so the sample's Program type is
+      visible at compile time.
+    -->
+    <ProjectReference Include="..\..\samples\SmartMapp.Net.Samples.MinimalApi\SmartMapp.Net.Samples.MinimalApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Hosting + EF + WebApplicationFactory — already centrally pinned in Directory.Packages.props -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+</Project>

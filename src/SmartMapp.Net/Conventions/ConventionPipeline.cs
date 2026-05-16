@@ -1,4 +1,5 @@
 using SmartMapp.Net.Abstractions;
+using SmartMapp.Net.Attributes;
 using SmartMapp.Net.Caching;
 using SmartMapp.Net.Discovery;
 
@@ -135,6 +136,18 @@ public sealed class ConventionPipeline
             var convention = _conventions[i];
             if (convention.TryLink(targetMember.MemberInfo, origin, out var provider) && provider is not null)
             {
+                // [Unmapped] sentinel returned by AttributeConvention — produce an explicit skip link.
+                if (ReferenceEquals(provider, AttributeConvention.UnmappedMarker))
+                {
+                    return new PropertyLink
+                    {
+                        TargetMember = targetMember.MemberInfo,
+                        Provider = NullValueProvider.Instance,
+                        LinkedBy = ConventionMatch.Unmapped(),
+                        IsSkipped = true,
+                    };
+                }
+
                 // Determine origin member path from the provider
                 var originPath = provider switch
                 {
@@ -142,26 +155,49 @@ public sealed class ConventionPipeline
                     ChainedPropertyAccessProvider cpap => cpap.MemberPath,
                     MethodAccessProvider map => map.Method.Name + "()",
                     UnflatteningValueProvider _ => "(unflattened)",
+                    AttributeDeferredValueProvider adp => $"[ProvideWith({adp.ProviderType.Name})]",
                     _ => ""
                 };
+
+                var linkedBy = convention is AttributeConvention
+                    ? ConventionMatch.FromAttribute(AttributeSourceName(provider), originPath)
+                    : new ConventionMatch
+                    {
+                        ConventionName = convention.GetType().Name,
+                        OriginMemberPath = originPath,
+                        Confidence = GetConfidence(convention),
+                    };
+
+                var transformer = ResolveAttributeTransformer(targetMember.MemberInfo);
 
                 return new PropertyLink
                 {
                     TargetMember = targetMember.MemberInfo,
                     Provider = provider,
-                    LinkedBy = new ConventionMatch
-                    {
-                        ConventionName = convention.GetType().Name,
-                        OriginMemberPath = originPath,
-                        Confidence = GetConfidence(convention),
-                    },
+                    LinkedBy = linkedBy,
                     IsSkipped = false,
+                    Transformer = transformer,
                 };
             }
         }
 
         // No convention matched — create a skipped link
         return CreateSkippedLink(targetMember);
+    }
+
+    private static string AttributeSourceName(IValueProvider provider) => provider switch
+    {
+        AttributeDeferredValueProvider => "ProvideWith",
+        ChainedPropertyAccessProvider => "LinkedFrom",
+        PropertyAccessProvider => "LinkedFrom",
+        _ => "Attribute"
+    };
+
+    private static ITypeTransformer? ResolveAttributeTransformer(System.Reflection.MemberInfo target)
+    {
+        var transformerType = AttributeReader.GetTransformerType(target);
+        if (transformerType is null) return null;
+        return new AttributeDeferredTypeTransformer(transformerType);
     }
 
     private static PropertyLink CreateSkippedLink(MemberModel targetMember)
@@ -202,6 +238,7 @@ public sealed class ConventionPipeline
         cache ??= TypeModelCache.Default;
         var conventions = new IPropertyConvention[]
         {
+            new AttributeConvention(cache),
             new ExactNameConvention(),
             new CaseConvention(),
             new PrefixDroppingConvention(),
@@ -212,6 +249,26 @@ public sealed class ConventionPipeline
         };
         return new ConventionPipeline(conventions, cache, new StructuralSimilarityScorer());
     }
+}
+
+/// <summary>
+/// Placeholder transformer attached to property links when the target member declares <c>[TransformWith]</c>.
+/// The actual transformer instance is resolved from DI at mapping time by the compiler/runtime.
+/// </summary>
+internal sealed class AttributeDeferredTypeTransformer : ITypeTransformer
+{
+    internal Type TransformerType { get; }
+
+    internal AttributeDeferredTypeTransformer(Type transformerType)
+    {
+        TransformerType = transformerType;
+    }
+
+    /// <inheritdoc />
+    public bool CanTransform(Type originType, Type targetType) => true;
+
+    /// <inheritdoc />
+    public override string ToString() => $"DeferredTransformer({TransformerType.Name})";
 }
 
 /// <summary>

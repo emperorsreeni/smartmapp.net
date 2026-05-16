@@ -107,6 +107,22 @@ public sealed record ConventionMatch
     public static ConventionMatch None()
         => new() { ConventionName = "None", OriginMemberPath = "", Confidence = 0.0 };
 
+    /// <summary>
+    /// Creates a match representing an attribute-driven link (e.g., <c>[LinkedFrom]</c>).
+    /// </summary>
+    /// <param name="attributeName">The attribute name (e.g., <c>"LinkedFrom"</c>).</param>
+    /// <param name="path">The origin member path declared by the attribute.</param>
+    /// <returns>A new <see cref="ConventionMatch"/> marked as explicit with attribute attribution.</returns>
+    public static ConventionMatch FromAttribute(string attributeName, string path)
+        => new() { ConventionName = $"Attribute:{attributeName}", OriginMemberPath = path, IsExplicit = true, Confidence = 1.0 };
+
+    /// <summary>
+    /// Creates a match representing an explicit <c>[Unmapped]</c> attribute skip.
+    /// </summary>
+    /// <returns>A new <see cref="ConventionMatch"/> with <c>ConventionName = "Attribute:Unmapped"</c>.</returns>
+    public static ConventionMatch Unmapped()
+        => new() { ConventionName = "Attribute:Unmapped", OriginMemberPath = "(unmapped)", IsExplicit = true, Confidence = 1.0 };
+
     /// <inheritdoc />
     public override string ToString() => IsExplicit
         ? $"{ConventionName}"

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-20260422-020658</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.8246)
+Unknown processor
+.NET SDK 10.0.200
+  [Host]     : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  Job-AMTLFA : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  ShortRun   : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+</code></pre>
+<pre><code>IterationCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                                         </th><th>Job </th><th>LaunchCount</th><th>WarmupCount</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>&#39;Forge() — 1 blueprint (4 pairs via BundleBlueprint)&#39;</td><td>Job-AMTLFA</td><td>Default</td><td>2</td><td>6.213 ms</td><td>3.717 ms</td><td>0.2038 ms</td><td>15.6250</td><td>7.8125</td><td>248.15 KB</td>
+</tr><tr><td>&#39;Forge() — 100 inline Bind&lt;,&gt;() pairs&#39;</td><td>Job-AMTLFA</td><td>Default</td><td>2</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td>
+</tr><tr><td>&#39;Forge() — 1 blueprint (4 pairs via BundleBlueprint)&#39;</td><td>ShortRun</td><td>1</td><td>3</td><td>6.048 ms</td><td>1.621 ms</td><td>0.0888 ms</td><td>15.6250</td><td>7.8125</td><td>248.62 KB</td>
+</tr><tr><td>&#39;Forge() — 100 inline Bind&lt;,&gt;() pairs&#39;</td><td>ShortRun</td><td>1</td><td>3</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td>
+</tr></tbody></table>
+</body>
+</html>

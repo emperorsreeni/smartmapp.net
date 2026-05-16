@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Spec §S8-T09 Constraints: "Targets net8.0 minimum; net9.0 additionally if stable on the CI runner."
+         CI provisions 8.0.x + 10.0.x (see .github/workflows/ci.yml); matching those TFMs keeps the
+         smoke-test step multi-targeted without pulling a standalone net9 SDK install. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SmartMapp.Net.Samples.Console</RootNamespace>
+    <AssemblyName>SmartMapp.Net.Samples.Console</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Samples are not shipped as NuGet packages (spec §S8-T09 Technical Considerations bullet 3). -->
+    <IsPackable>false</IsPackable>
+    <!-- XML docs are noisy for a demo executable; suppress missing-doc warnings while keeping
+         the repo-wide TreatWarningsAsErrors = true inherited from Directory.Build.props. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartMapp.Net\SmartMapp.Net.csproj" />
+    <ProjectReference Include="..\..\src\SmartMapp.Net.DependencyInjection\SmartMapp.Net.DependencyInjection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Spec §S8-T09 Constraints bullet 2 allows SmartMapp.Net + SmartMapp.Net.DependencyInjection
+         (above, via ProjectReference) plus Microsoft.Extensions.Hosting. Hosting is referenced
+         directly here because scenario 8 uses `new ServiceCollection().BuildServiceProvider()`
+         — `BuildServiceProvider` lives in the concrete Microsoft.Extensions.DependencyInjection
+         package (our DI package references only .Abstractions to stay container-agnostic), and
+         Microsoft.Extensions.Hosting pulls in the concrete DI package transitively. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+</Project>

@@ -8,7 +8,10 @@ namespace SmartMapp.Net.Caching;
 /// </summary>
 public sealed class MappingDelegateCache
 {
-    private readonly ConcurrentDictionary<TypePair, Lazy<Func<object, MappingScope, object>>> _cache = new();
+    // Sprint 9 · S9-T08: storage migrated from Lazy<Func<>> to DelegateSlot so the adaptive
+    // promotion manager can atomically swap an IL-emitted delegate into the slot via
+    // Interlocked.CompareExchange without invalidating the existing cache lookup contract.
+    private readonly ConcurrentDictionary<TypePair, DelegateSlot> _cache = new();
 
     /// <summary>
     /// Gets the compiled delegate for the given type pair, compiling it via the factory if not yet cached.
@@ -21,10 +24,21 @@ public sealed class MappingDelegateCache
         TypePair pair,
         Func<TypePair, Func<object, MappingScope, object>> compileFactory)
     {
-        var lazy = _cache.GetOrAdd(pair, tp => new Lazy<Func<object, MappingScope, object>>(
-            () => compileFactory(tp),
-            LazyThreadSafetyMode.ExecutionAndPublication));
-        return lazy.Value;
+        var slot = _cache.GetOrAdd(pair, static _ => new DelegateSlot());
+        return slot.GetOrCompile(() => compileFactory(pair));
+    }
+
+    /// <summary>
+    /// Returns the swappable <see cref="DelegateSlot"/> for <paramref name="pair"/>, compiling
+    /// it via <paramref name="compileFactory"/> when the slot is empty. Callers that need to
+    /// observe adaptive-promotion swaps (Sprint 9 · S9-T08) should keep a reference to the
+    /// slot and read <see cref="DelegateSlot.Current"/> per invocation.
+    /// </summary>
+    public DelegateSlot GetSlot(TypePair pair, Func<TypePair, Func<object, MappingScope, object>> compileFactory)
+    {
+        var slot = _cache.GetOrAdd(pair, static _ => new DelegateSlot());
+        _ = slot.GetOrCompile(() => compileFactory(pair));
+        return slot;
     }
 
     /// <summary>
@@ -35,14 +49,26 @@ public sealed class MappingDelegateCache
     /// <returns><c>true</c> if a compiled delegate was found; otherwise <c>false</c>.</returns>
     public bool TryGet(TypePair pair, out Func<object, MappingScope, object>? del)
     {
-        if (_cache.TryGetValue(pair, out var lazy) && lazy.IsValueCreated)
+        if (_cache.TryGetValue(pair, out var slot) && slot.Current is { } current)
         {
-            del = lazy.Value;
+            del = current;
             return true;
         }
 
         del = null;
         return false;
+    }
+
+    /// <summary>
+    /// Sprint 9 · S9-T08 atomic swap. Replaces the cached delegate for <paramref name="pair"/>
+    /// with <paramref name="newDelegate"/> via <see cref="Interlocked.CompareExchange{T}(ref T, T, T)"/>.
+    /// Returns <c>true</c> on successful publication; <c>false</c> when no slot existed yet
+    /// (the IL Emit promotion path always primes the slot via <see cref="GetOrCompile"/> first).
+    /// </summary>
+    public bool TrySwap(TypePair pair, Func<object, MappingScope, object> newDelegate)
+    {
+        if (!_cache.TryGetValue(pair, out var slot)) return false;
+        return slot.TrySwap(newDelegate);
     }
 
     /// <summary>
@@ -52,7 +78,7 @@ public sealed class MappingDelegateCache
     /// <returns>A collection of cached type pairs.</returns>
     public IReadOnlyCollection<TypePair> GetCachedPairs()
     {
-        return _cache.Where(kv => kv.Value.IsValueCreated).Select(kv => kv.Key).ToArray();
+        return _cache.Where(kv => kv.Value.Current is not null).Select(kv => kv.Key).ToArray();
     }
 
     /// <summary>

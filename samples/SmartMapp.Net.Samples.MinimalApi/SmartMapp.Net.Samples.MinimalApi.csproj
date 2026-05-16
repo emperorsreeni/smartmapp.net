@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Matches the CI matrix (8.0.x + 10.0.x provisioned in .github/workflows/ci.yml).
+         Minimal API host + EF Core InMemory are both fully supported on both TFMs. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>SmartMapp.Net.Samples.MinimalApi</RootNamespace>
+    <AssemblyName>SmartMapp.Net.Samples.MinimalApi</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Samples are not packed as NuGet artefacts (spec §S8-T09 / §S8-T10 convention). -->
+    <IsPackable>false</IsPackable>
+    <!-- Sample executables don't ship XML docs; keep the global warnaserror invariant. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Enable WebApplicationFactory<Program> from the integration test project by emitting
+         the auto-generated Program class as `public partial` — avoids the standard boilerplate
+         workaround in top-level-statements apps. -->
+    <InternalsVisibleTo>SmartMapp.Net.Tests.Unit</InternalsVisibleTo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartMapp.Net\SmartMapp.Net.csproj" />
+    <ProjectReference Include="..\..\src\SmartMapp.Net.DependencyInjection\SmartMapp.Net.DependencyInjection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only sample-scoped dependency: EF Core InMemory is the data-layer stand-in used to
+         demonstrate SelectAs projection translation without a real database. It is NOT a
+         runtime dependency of SmartMapp.Net itself (spec §S8-T10 Constraints bullet 1). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SmartMapp.Net.Tests.Unit" />
+  </ItemGroup>
+
+</Project>

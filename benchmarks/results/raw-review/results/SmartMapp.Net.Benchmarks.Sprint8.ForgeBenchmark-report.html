@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-20260422-023730</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.8246)
+Unknown processor
+.NET SDK 10.0.200
+  [Host]     : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  Job-HHWHUB : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  ShortRun   : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+</code></pre>
+<pre><code>IterationCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                                         </th><th>Job </th><th>LaunchCount</th><th>WarmupCount</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>&#39;Forge() — 1 blueprint (4 pairs via BundleBlueprint)&#39;</td><td>Job-HHWHUB</td><td>Default</td><td>2</td><td>4.815 ms</td><td>1.128 ms</td><td>0.0618 ms</td><td>15.6250</td><td>7.8125</td><td>248.15 KB</td>
+</tr><tr><td>&#39;Forge() — 100 inline Bind&lt;,&gt;() pairs&#39;</td><td>Job-HHWHUB</td><td>Default</td><td>2</td><td>34.940 ms</td><td>78.507 ms</td><td>4.3032 ms</td><td>166.6667</td><td>83.3333</td><td>2079.17 KB</td>
+</tr><tr><td>&#39;Forge() — 1 blueprint (4 pairs via BundleBlueprint)&#39;</td><td>ShortRun</td><td>1</td><td>3</td><td>4.702 ms</td><td>13.049 ms</td><td>0.7153 ms</td><td>15.6250</td><td>7.8125</td><td>248.23 KB</td>
+</tr><tr><td>&#39;Forge() — 100 inline Bind&lt;,&gt;() pairs&#39;</td><td>ShortRun</td><td>1</td><td>3</td><td>31.742 ms</td><td>14.243 ms</td><td>0.7807 ms</td><td>166.6667</td><td>83.3333</td><td>2079.3 KB</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  // markdownlint config for the SmartMapp.Net repo READMEs + CHANGELOG.
+  // Spec §S8-T10 Unit-Tests bullet 3: "README lint: markdown validation and link check via CI job".
+  // Relaxed from the stock ruleset to match the current authoring style:
+  //   - MD013 (line-length) is off; long tables and code blocks are allowed.
+  //   - MD033 (no-inline-html) is off; we use <details>, <br>, and shields.io <img> tags.
+  //   - MD041 (first-line-h1) is off; CHANGELOG starts with a top-level title inside a block.
+  //   - MD024 allows duplicate headers when they are siblings (e.g., multiple ### Added blocks).
+  "default": true,
+  "MD013": false,
+  "MD033": false,
+  "MD041": false,
+  "MD024": { "siblings_only": true }
+}

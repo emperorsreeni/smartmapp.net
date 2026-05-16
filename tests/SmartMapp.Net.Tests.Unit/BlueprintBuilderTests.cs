@@ -180,11 +180,12 @@ public class BlueprintBuilderTests
     }
 
     [Fact]
-    public void Compose_ThrowsNotImplemented()
+    public void Compose_ReturnsNonNullStub()
     {
+        // Sprint 7 T04 AC: Compose<T>() must return a non-null stub; full execution lands in Sprint 15.
         var builder = new BlueprintBuilder();
-        var act = () => builder.Compose<OrderDto>();
-        act.Should().Throw<NotImplementedException>();
+        var rule = builder.Compose<OrderDto>();
+        rule.Should().NotBeNull();
     }
 
     [Fact]
@@ -213,11 +214,14 @@ public class BlueprintBuilderTests
     [Fact]
     public void DeferredValueProvider_ThrowsWithoutServiceProvider()
     {
+        // Post-S8-T04: resolution routes through IProviderResolver. IValueProvider is an
+        // interface → DefaultProviderResolver throws "abstract or an interface" with a hint
+        // pointing at DI registration as the fix (spec §11.4).
         var provider = new DeferredValueProvider(typeof(IValueProvider));
         var scope = new MappingScope();
 
         var act = () => provider.Provide(new object(), new object(), "Test", scope);
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*no ServiceProvider*");
+            .WithMessage("*abstract or an interface*");
     }
 }

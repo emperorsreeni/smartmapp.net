@@ -1,8 +1,15 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/SmartMapp.Net/SmartMapp.Net.csproj" />
+    <Project Path="src/SmartMapp.Net.DependencyInjection/SmartMapp.Net.DependencyInjection.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SmartMapp.Net.Tests.Unit/SmartMapp.Net.Tests.Unit.csproj" />
+    <Project Path="tests/SmartMapp.Net.Tests.ExternalAssemblyFixture/SmartMapp.Net.Tests.ExternalAssemblyFixture.csproj" />
+    <Project Path="tests/SmartMapp.Net.Tests.Integration/SmartMapp.Net.Tests.Integration.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/SmartMapp.Net.Samples.Console/SmartMapp.Net.Samples.Console.csproj" />
+    <Project Path="samples/SmartMapp.Net.Samples.MinimalApi/SmartMapp.Net.Samples.MinimalApi.csproj" />
   </Folder>
 </Solution>

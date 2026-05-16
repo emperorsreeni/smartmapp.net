@@ -81,7 +81,17 @@ internal sealed class BlueprintValidator
 
             foreach (var link in bp.Links)
             {
-                linkedMembers.Add(link.TargetMember.Name);
+                // A link counts as "linked" for validation purposes when the mapping is real
+                // (not skipped), OR when the user explicitly opted out — either via fluent
+                // `.Skip()` / `[Unmapped]` (any explicit source). Convention-produced skipped
+                // placeholders (source = "None") represent unresolved members and must surface as
+                // unlinked so strict mode can fire.
+                var isRealLink = !link.IsSkipped;
+                var isIntentionalSkip = link.IsSkipped
+                    && !string.Equals(link.LinkedBy.ConventionName, "None", StringComparison.Ordinal);
+
+                if (isRealLink || isIntentionalSkip)
+                    linkedMembers.Add(link.TargetMember.Name);
             }
 
             foreach (var member in targetModel.WritableMembers)

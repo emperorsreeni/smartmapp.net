@@ -1,18 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Sprint 8 · S8-T12 — benchmarks run on the host TFM (net10.0) with an unpinned SimpleJob
+    per benchmark class. Spec calls for `[SimpleJob(RuntimeMoniker.Net80)]` + Net90 for
+    dual-TFM tracking; BenchmarkDotNet 0.14's RuntimeMoniker enum tops out at Net90, and the
+    baseline is recorded from the installed SDK (net10.0 per global.json). A follow-up task
+    in Sprint 9 can attach `[SimpleJob(RuntimeMoniker.Net80)]` once .NET 8 / .NET 9 runtimes
+    are installed on the CI runner — the benchmark class shapes do not change.
+  -->
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SmartMapp.Net.Benchmarks</RootNamespace>
     <IsPackable>false</IsPackable>
+    <!--
+      BenchmarkDotNet emits compiler warnings from its generated code. The solution-wide
+      TreatWarningsAsErrors would break any short-job invocation; scope the relax here.
+      NU1903 suppresses the AutoMapper 13.0.1 transitive-vulnerability warning — AutoMapper
+      is a bench-only comparison baseline, never shipped; no runtime exposure.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <!-- AutoMapper: vs-AutoMapper comparison baseline (S8-T12 Acceptance bullet 2). -->
+    <PackageReference Include="AutoMapper" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartMapp.Net\SmartMapp.Net.csproj" />
+    <ProjectReference Include="..\..\src\SmartMapp.Net.DependencyInjection\SmartMapp.Net.DependencyInjection.csproj" />
   </ItemGroup>
 
 </Project>

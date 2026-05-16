@@ -1,0 +1,344 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 4 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\obj\Release\net10.0/" /p:OutDir="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0/" /p:OutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0/" in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107
+// command took 1.97 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\obj\Release\net10.0/" /p:OutDir="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0/" /p:OutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0/" --output "C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0/" in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107
+// command took 12.31 sec and exited with 0
+// ***** Done, took 00:00:14 (14.39 sec)   *****
+// Found 4 benchmarks:
+//   ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+//   ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+//   ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet ffc5484a-f40d-46de-9ce6-1759455b9107.dll --anonymousPipes 2632 2628 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark.Forge_Bundle --job "IterationCount=3, WarmupCount=2" --benchmarkId 0 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: Job-IARIIP(IterationCount=3, WarmupCount=2)
+
+OverheadJitting  1: 1 op, 273600.00 ns, 273.6000 us/op
+WorkloadJitting  1: 1 op, 68690500.00 ns, 68.6905 ms/op
+
+WorkloadPilot    1: 2 op, 10262600.00 ns, 5.1313 ms/op
+WorkloadPilot    2: 3 op, 13866800.00 ns, 4.6223 ms/op
+WorkloadPilot    3: 4 op, 18225300.00 ns, 4.5563 ms/op
+WorkloadPilot    4: 5 op, 22740300.00 ns, 4.5481 ms/op
+WorkloadPilot    5: 6 op, 27244100.00 ns, 4.5407 ms/op
+WorkloadPilot    6: 7 op, 32270900.00 ns, 4.6101 ms/op
+WorkloadPilot    7: 8 op, 37132200.00 ns, 4.6415 ms/op
+WorkloadPilot    8: 9 op, 40059400.00 ns, 4.4510 ms/op
+WorkloadPilot    9: 10 op, 49478800.00 ns, 4.9479 ms/op
+WorkloadPilot   10: 11 op, 52636200.00 ns, 4.7851 ms/op
+WorkloadPilot   11: 12 op, 63553000.00 ns, 5.2961 ms/op
+WorkloadPilot   12: 13 op, 59543800.00 ns, 4.5803 ms/op
+WorkloadPilot   13: 14 op, 66598800.00 ns, 4.7571 ms/op
+WorkloadPilot   14: 15 op, 69721200.00 ns, 4.6481 ms/op
+WorkloadPilot   15: 16 op, 74020200.00 ns, 4.6263 ms/op
+WorkloadPilot   16: 32 op, 158778900.00 ns, 4.9618 ms/op
+WorkloadPilot   17: 64 op, 304343300.00 ns, 4.7554 ms/op
+WorkloadPilot   18: 128 op, 603955800.00 ns, 4.7184 ms/op
+
+WorkloadWarmup   1: 128 op, 567505100.00 ns, 4.4336 ms/op
+WorkloadWarmup   2: 128 op, 588442800.00 ns, 4.5972 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 128 op, 625366400.00 ns, 4.8857 ms/op
+WorkloadActual   2: 128 op, 610664500.00 ns, 4.7708 ms/op
+WorkloadActual   3: 128 op, 612949900.00 ns, 4.7887 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 128 op, 625366400.00 ns, 4.8857 ms/op
+WorkloadResult   2: 128 op, 610664500.00 ns, 4.7708 ms/op
+WorkloadResult   3: 128 op, 612949900.00 ns, 4.7887 ms/op
+// GC:  2 1 0 32526000 128
+// Threading:  0 0 128
+
+// AfterAll
+// Benchmark Process 54468 has exited with code 0.
+
+Mean = 4.815 ms, StdErr = 0.036 ms (0.74%), N = 3, StdDev = 0.062 ms
+Min = 4.771 ms, Q1 = 4.780 ms, Median = 4.789 ms, Q3 = 4.837 ms, Max = 4.886 ms
+IQR = 0.057 ms, LowerFence = 4.694 ms, UpperFence = 4.923 ms
+ConfidenceInterval = [3.687 ms; 5.943 ms] (CI 99.9%), Margin = 1.128 ms (23.42% of Mean)
+Skewness = 0.35, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 3 (75.0%) benchmark(s) to run. Estimated finish 2026-04-22 2:37 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet ffc5484a-f40d-46de-9ce6-1759455b9107.dll --anonymousPipes 2636 2612 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark.Forge_100Pairs --job "IterationCount=3, WarmupCount=2" --benchmarkId 1 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: Job-YHRXRJ(IterationCount=3, WarmupCount=2)
+
+OverheadJitting  1: 1 op, 299500.00 ns, 299.5000 us/op
+WorkloadJitting  1: 1 op, 107258200.00 ns, 107.2582 ms/op
+
+WorkloadPilot    1: 2 op, 84991900.00 ns, 42.4960 ms/op
+WorkloadPilot    2: 3 op, 128417600.00 ns, 42.8059 ms/op
+WorkloadPilot    3: 4 op, 174217900.00 ns, 43.5545 ms/op
+WorkloadPilot    4: 5 op, 207030700.00 ns, 41.4061 ms/op
+WorkloadPilot    5: 6 op, 250153200.00 ns, 41.6922 ms/op
+WorkloadPilot    6: 7 op, 331376100.00 ns, 47.3394 ms/op
+WorkloadPilot    7: 8 op, 341434300.00 ns, 42.6793 ms/op
+WorkloadPilot    8: 9 op, 403960800.00 ns, 44.8845 ms/op
+WorkloadPilot    9: 10 op, 424885200.00 ns, 42.4885 ms/op
+WorkloadPilot   10: 11 op, 448850400.00 ns, 40.8046 ms/op
+WorkloadPilot   11: 12 op, 524406700.00 ns, 43.7006 ms/op
+
+WorkloadWarmup   1: 12 op, 449179300.00 ns, 37.4316 ms/op
+WorkloadWarmup   2: 12 op, 450684900.00 ns, 37.5571 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 12 op, 478902200.00 ns, 39.9085 ms/op
+WorkloadActual   2: 12 op, 389333600.00 ns, 32.4445 ms/op
+WorkloadActual   3: 12 op, 389589900.00 ns, 32.4658 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 12 op, 478902200.00 ns, 39.9085 ms/op
+WorkloadResult   2: 12 op, 389333600.00 ns, 32.4445 ms/op
+WorkloadResult   3: 12 op, 389589900.00 ns, 32.4658 ms/op
+// GC:  2 1 0 25548896 12
+// Threading:  0 0 12
+
+// AfterAll
+// Benchmark Process 53052 has exited with code 0.
+
+Mean = 34.940 ms, StdErr = 2.484 ms (7.11%), N = 3, StdDev = 4.303 ms
+Min = 32.444 ms, Q1 = 32.455 ms, Median = 32.466 ms, Q3 = 36.187 ms, Max = 39.909 ms
+IQR = 3.732 ms, LowerFence = 26.857 ms, UpperFence = 41.785 ms
+ConfidenceInterval = [-43.567 ms; 113.446 ms] (CI 99.9%), Margin = 78.507 ms (224.69% of Mean)
+Skewness = 0.38, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 2 (50.0%) benchmark(s) to run. Estimated finish 2026-04-22 2:37 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet ffc5484a-f40d-46de-9ce6-1759455b9107.dll --anonymousPipes 2668 1976 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark.Forge_Bundle --job ShortRun --benchmarkId 2 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+OverheadJitting  1: 1 op, 307200.00 ns, 307.2000 us/op
+WorkloadJitting  1: 1 op, 64360600.00 ns, 64.3606 ms/op
+
+WorkloadPilot    1: 2 op, 9576100.00 ns, 4.7881 ms/op
+WorkloadPilot    2: 3 op, 13803600.00 ns, 4.6012 ms/op
+WorkloadPilot    3: 4 op, 18186200.00 ns, 4.5466 ms/op
+WorkloadPilot    4: 5 op, 22851300.00 ns, 4.5703 ms/op
+WorkloadPilot    5: 6 op, 27095900.00 ns, 4.5160 ms/op
+WorkloadPilot    6: 7 op, 32219500.00 ns, 4.6028 ms/op
+WorkloadPilot    7: 8 op, 39848300.00 ns, 4.9810 ms/op
+WorkloadPilot    8: 9 op, 43444000.00 ns, 4.8271 ms/op
+WorkloadPilot    9: 10 op, 48622300.00 ns, 4.8622 ms/op
+WorkloadPilot   10: 11 op, 52330200.00 ns, 4.7573 ms/op
+WorkloadPilot   11: 12 op, 57325400.00 ns, 4.7771 ms/op
+WorkloadPilot   12: 13 op, 60852100.00 ns, 4.6809 ms/op
+WorkloadPilot   13: 14 op, 65844100.00 ns, 4.7032 ms/op
+WorkloadPilot   14: 15 op, 70651800.00 ns, 4.7101 ms/op
+WorkloadPilot   15: 16 op, 75987200.00 ns, 4.7492 ms/op
+WorkloadPilot   16: 32 op, 153116800.00 ns, 4.7849 ms/op
+WorkloadPilot   17: 64 op, 308180700.00 ns, 4.8153 ms/op
+WorkloadPilot   18: 128 op, 601966600.00 ns, 4.7029 ms/op
+
+WorkloadWarmup   1: 128 op, 585060800.00 ns, 4.5708 ms/op
+WorkloadWarmup   2: 128 op, 595773400.00 ns, 4.6545 ms/op
+WorkloadWarmup   3: 128 op, 600450100.00 ns, 4.6910 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 128 op, 627372200.00 ns, 4.9013 ms/op
+WorkloadActual   2: 128 op, 677945700.00 ns, 5.2965 ms/op
+WorkloadActual   3: 128 op, 500250100.00 ns, 3.9082 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 128 op, 627372200.00 ns, 4.9013 ms/op
+WorkloadResult   2: 128 op, 677945700.00 ns, 5.2965 ms/op
+WorkloadResult   3: 128 op, 500250100.00 ns, 3.9082 ms/op
+// GC:  2 1 0 32536240 128
+// Threading:  0 0 128
+
+// AfterAll
+// Benchmark Process 52544 has exited with code 0.
+
+Mean = 4.702 ms, StdErr = 0.413 ms (8.78%), N = 3, StdDev = 0.715 ms
+Min = 3.908 ms, Q1 = 4.405 ms, Median = 4.901 ms, Q3 = 5.099 ms, Max = 5.296 ms
+IQR = 0.694 ms, LowerFence = 3.364 ms, UpperFence = 6.140 ms
+ConfidenceInterval = [-8.347 ms; 17.751 ms] (CI 99.9%), Margin = 13.049 ms (277.52% of Mean)
+Skewness = -0.26, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 1 (25.0%) benchmark(s) to run. Estimated finish 2026-04-22 2:37 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet ffc5484a-f40d-46de-9ce6-1759455b9107.dll --anonymousPipes 652 648 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark.Forge_100Pairs --job ShortRun --benchmarkId 3 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\ffc5484a-f40d-46de-9ce6-1759455b9107\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+OverheadJitting  1: 1 op, 270600.00 ns, 270.6000 us/op
+WorkloadJitting  1: 1 op, 109159100.00 ns, 109.1591 ms/op
+
+WorkloadPilot    1: 2 op, 81020400.00 ns, 40.5102 ms/op
+WorkloadPilot    2: 3 op, 122714400.00 ns, 40.9048 ms/op
+WorkloadPilot    3: 4 op, 168743000.00 ns, 42.1858 ms/op
+WorkloadPilot    4: 5 op, 212282600.00 ns, 42.4565 ms/op
+WorkloadPilot    5: 6 op, 254693200.00 ns, 42.4489 ms/op
+WorkloadPilot    6: 7 op, 293461400.00 ns, 41.9231 ms/op
+WorkloadPilot    7: 8 op, 335026100.00 ns, 41.8783 ms/op
+WorkloadPilot    8: 9 op, 365772700.00 ns, 40.6414 ms/op
+WorkloadPilot    9: 10 op, 402123600.00 ns, 40.2124 ms/op
+WorkloadPilot   10: 11 op, 424876300.00 ns, 38.6251 ms/op
+WorkloadPilot   11: 12 op, 558675500.00 ns, 46.5563 ms/op
+
+WorkloadWarmup   1: 12 op, 483867600.00 ns, 40.3223 ms/op
+WorkloadWarmup   2: 12 op, 458048700.00 ns, 38.1707 ms/op
+WorkloadWarmup   3: 12 op, 444655600.00 ns, 37.0546 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 12 op, 388097200.00 ns, 32.3414 ms/op
+WorkloadActual   2: 12 op, 384314100.00 ns, 32.0262 ms/op
+WorkloadActual   3: 12 op, 370313100.00 ns, 30.8594 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 12 op, 388097200.00 ns, 32.3414 ms/op
+WorkloadResult   2: 12 op, 384314100.00 ns, 32.0262 ms/op
+WorkloadResult   3: 12 op, 370313100.00 ns, 30.8594 ms/op
+// GC:  2 1 0 25550384 12
+// Threading:  0 0 12
+
+// AfterAll
+// Benchmark Process 46036 has exited with code 0.
+
+Mean = 31.742 ms, StdErr = 0.451 ms (1.42%), N = 3, StdDev = 0.781 ms
+Min = 30.859 ms, Q1 = 31.443 ms, Median = 32.026 ms, Q3 = 32.184 ms, Max = 32.341 ms
+IQR = 0.741 ms, LowerFence = 30.331 ms, UpperFence = 33.295 ms
+ConfidenceInterval = [17.499 ms; 45.985 ms] (CI 99.9%), Margin = 14.243 ms (44.87% of Mean)
+Skewness = -0.32, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 0 (0.0%) benchmark(s) to run. Estimated finish 2026-04-22 2:37 (0h 0m from now) **
+Successfully reverted power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  benchmarks\results\raw-review\results\SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-report.csv
+  benchmarks\results\raw-review\results\SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-report-github.md
+  benchmarks\results\raw-review\results\SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-report.html
+  benchmarks\results\raw-review\results\SmartMapp.Net.Benchmarks.Sprint8.ForgeBenchmark-report-full-compressed.json
+
+// * Detailed results *
+ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+Runtime = .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 4.815 ms, StdErr = 0.036 ms (0.74%), N = 3, StdDev = 0.062 ms
+Min = 4.771 ms, Q1 = 4.780 ms, Median = 4.789 ms, Q3 = 4.837 ms, Max = 4.886 ms
+IQR = 0.057 ms, LowerFence = 4.694 ms, UpperFence = 4.923 ms
+ConfidenceInterval = [3.687 ms; 5.943 ms] (CI 99.9%), Margin = 1.128 ms (23.42% of Mean)
+Skewness = 0.35, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[4.715 ms ; 4.836 ms) | @@
+[4.836 ms ; 4.942 ms) | @
+---------------------------------------------------
+
+ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': Job-HHWHUB(IterationCount=3, WarmupCount=2)
+Runtime = .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 34.940 ms, StdErr = 2.484 ms (7.11%), N = 3, StdDev = 4.303 ms
+Min = 32.444 ms, Q1 = 32.455 ms, Median = 32.466 ms, Q3 = 36.187 ms, Max = 39.909 ms
+IQR = 3.732 ms, LowerFence = 26.857 ms, UpperFence = 41.785 ms
+ConfidenceInterval = [-43.567 ms; 113.446 ms] (CI 99.9%), Margin = 78.507 ms (224.69% of Mean)
+Skewness = 0.38, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[32.260 ms ; 40.093 ms) | @@@
+---------------------------------------------------
+
+ForgeBenchmark.'Forge() — 1 blueprint (4 pairs via BundleBlueprint)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 4.702 ms, StdErr = 0.413 ms (8.78%), N = 3, StdDev = 0.715 ms
+Min = 3.908 ms, Q1 = 4.405 ms, Median = 4.901 ms, Q3 = 5.099 ms, Max = 5.296 ms
+IQR = 0.694 ms, LowerFence = 3.364 ms, UpperFence = 6.140 ms
+ConfidenceInterval = [-8.347 ms; 17.751 ms] (CI 99.9%), Margin = 13.049 ms (277.52% of Mean)
+Skewness = -0.26, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[3.257 ms ; 4.448 ms) | @
+[4.448 ms ; 5.947 ms) | @@
+---------------------------------------------------
+
+ForgeBenchmark.'Forge() — 100 inline Bind<,>() pairs': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 31.742 ms, StdErr = 0.451 ms (1.42%), N = 3, StdDev = 0.781 ms
+Min = 30.859 ms, Q1 = 31.443 ms, Median = 32.026 ms, Q3 = 32.184 ms, Max = 32.341 ms
+IQR = 0.741 ms, LowerFence = 30.331 ms, UpperFence = 33.295 ms
+ConfidenceInterval = [17.499 ms; 45.985 ms] (CI 99.9%), Margin = 14.243 ms (44.87% of Mean)
+Skewness = -0.32, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[30.149 ms ; 31.473 ms) | @
+[31.473 ms ; 33.052 ms) | @@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.8246)
+Unknown processor
+.NET SDK 10.0.200
+  [Host]     : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  Job-HHWHUB : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+  ShortRun   : .NET 10.0.6 (10.0.626.17701), X64 RyuJIT AVX2
+
+IterationCount=3  
+
+| Method                                                | Job        | LaunchCount | WarmupCount | Mean      | Error     | StdDev    | Gen0     | Gen1    | Allocated  |
+|------------------------------------------------------ |----------- |------------ |------------ |----------:|----------:|----------:|---------:|--------:|-----------:|
+| 'Forge() — 1 blueprint (4 pairs via BundleBlueprint)' | Job-HHWHUB | Default     | 2           |  4.815 ms |  1.128 ms | 0.0618 ms |  15.6250 |  7.8125 |  248.15 KB |
+| 'Forge() — 100 inline Bind<,>() pairs'                | Job-HHWHUB | Default     | 2           | 34.940 ms | 78.507 ms | 4.3032 ms | 166.6667 | 83.3333 | 2079.17 KB |
+| 'Forge() — 1 blueprint (4 pairs via BundleBlueprint)' | ShortRun   | 1           | 3           |  4.702 ms | 13.049 ms | 0.7153 ms |  15.6250 |  7.8125 |  248.23 KB |
+| 'Forge() — 100 inline Bind<,>() pairs'                | ShortRun   | 1           | 3           | 31.742 ms | 14.243 ms | 0.7807 ms | 166.6667 | 83.3333 |  2079.3 KB |
+
+// * Legends *
+  Mean      : Arithmetic mean of all measurements
+  Error     : Half of 99.9% confidence interval
+  StdDev    : Standard deviation of all measurements
+  Gen0      : GC Generation 0 collects per 1000 operations
+  Gen1      : GC Generation 1 collects per 1000 operations
+  Allocated : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 ms      : 1 Millisecond (0.001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:00:25 (25.64 sec), executed benchmarks: 4
+
+Global total time: 00:00:40 (40.23 sec), executed benchmarks: 4
+// * Artifacts cleanup *
+Artifacts cleanup is finished

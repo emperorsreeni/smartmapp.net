@@ -163,9 +163,10 @@ public class ConventionPipelineTests
     {
         var pipeline = CreateDefaultPipeline();
 
-        pipeline.Conventions.Should().HaveCount(7);
+        pipeline.Conventions.Should().HaveCount(8);
         pipeline.Conventions.Select(c => c.GetType()).Should().Contain(new[]
         {
+            typeof(AttributeConvention),
             typeof(ExactNameConvention),
             typeof(CaseConvention),
             typeof(PrefixDroppingConvention),

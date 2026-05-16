@@ -28,7 +28,12 @@ internal static class TransformerExpressionHelper
         ParameterExpression scopeParam,
         ITypeTransformer? transformer)
     {
-        // Same type — no conversion
+        // Same type with an explicit transformer attached — invoke it as a post-processor
+        // (e.g., string → string Uppercasing via [TransformWith]).
+        if (originType == targetType && transformer is not null)
+            return BuildTransformerCall(originValueExpr, originType, targetType, scopeParam, transformer);
+
+        // Same type without a transformer — no conversion needed.
         if (originType == targetType)
             return originValueExpr;
 

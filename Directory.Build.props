@@ -15,6 +15,45 @@
     <Product>SmartMapp.Net</Product>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/emperorsreeni/smartmapp.net</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/emperorsreeni/smartmapp.net</PackageProjectUrl>
   </PropertyGroup>
+
+  <!-- ==========================================================================================
+       Sprint 8 · S8-T12 RC polish — v1.0.0-rc.1 packaging semantics applied to every packable
+       project in the solution (currently `SmartMapp.Net` and `SmartMapp.Net.DependencyInjection`).
+       Override any property at the csproj level if a package needs a different value.
+       ========================================================================================== -->
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix>rc.1</VersionSuffix>
+
+    <!-- Deterministic builds (identical source → identical binary / .nupkg) per spec AC "deterministic build enabled". -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Source Link for pack + symbols (.snupkg) per spec AC "source-link embedded". -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Spec §S8-T12 AC bullet 6 "Package validation: dotnet package validate clean".
+         `dotnet package validate` is not a standalone CLI verb; the supported surface is the
+         `EnablePackageValidation` MSBuild property which runs the full set of package validators
+         (compatible-frameworks check, intra-package API surface, dependency resolvability, etc.)
+         as part of `dotnet pack`. `DisablePackageBaselineValidation` is required for the v1.0.0-rc.1
+         *first* RC — there's no prior-shipped baseline to diff against yet. Once `1.0.0` ships, the
+         baseline property is switched on via `<PackageValidationBaselineVersion>1.0.0</…>` to guard
+         API-surface continuity on subsequent releases. -->
+    <EnablePackageValidation Condition="'$(IsPackable)' == 'true'">true</EnablePackageValidation>
+    <DisablePackageBaselineValidation Condition="'$(IsPackable)' == 'true'">true</DisablePackageBaselineValidation>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <!-- Source-link provider: emits *.pdb source mapping to github.com/emperorsreeni/smartmapp.net.
+         Version is centrally managed via Directory.Packages.props. -->
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+  </ItemGroup>
 
 </Project>
