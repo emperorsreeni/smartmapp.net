@@ -23,9 +23,49 @@ public sealed record MappingInspection
     public Blueprint? Blueprint { get; init; }
 
     /// <summary>
-    /// Gets the mapping strategy used for this pair.
+    /// Gets the mapping strategy declared on the <see cref="SmartMapp.Net.Blueprint"/>.
     /// </summary>
     public MappingStrategy Strategy { get; init; } = MappingStrategy.ExpressionCompiled;
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. The concrete <see cref="MappingStrategy"/> the strategy chain
+    /// resolved to for this pair after applying <see cref="Configuration.StrategyOptions"/>.
+    /// May differ from <see cref="Strategy"/> when adaptive promotion has fired
+    /// (<c>ExpressionCompiled → ILEmit</c>). <c>null</c> when the pair has not yet been
+    /// compiled (no <c>Map</c> call observed).
+    /// </summary>
+    public MappingStrategy? ActiveStrategy { get; init; }
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. Current adaptive-promotion lifecycle state for this pair under
+    /// <see cref="Configuration.StrategyMode.Adaptive"/>. <c>null</c> when the sculptor is not
+    /// in <c>Adaptive</c> mode or the pair has not yet been observed.
+    /// </summary>
+    public Engine.Promotion.PromotionState? PromotionState { get; init; }
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. UTC timestamp of the most recent successful promotion for this pair,
+    /// or <c>null</c> if the pair has never been promoted.
+    /// </summary>
+    public DateTimeOffset? LastPromotedAt { get; init; }
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. Wall-time of the most recent IL-Emit compilation during promotion,
+    /// in milliseconds. <c>null</c> when no promotion has occurred yet.
+    /// </summary>
+    public double? PromotionCompileDurationMs { get; init; }
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. Last error captured by the promotion worker for this pair, or
+    /// <c>null</c> on success / never-attempted.
+    /// </summary>
+    public Exception? PromotionError { get; init; }
+
+    /// <summary>
+    /// Sprint 9 · S9-T10. Current invocation count for this pair. <c>0</c> when adaptive
+    /// promotion is not active.
+    /// </summary>
+    public long InvocationCount { get; init; }
 
     /// <summary>
     /// Gets the total number of property links (including skipped).
@@ -53,6 +93,15 @@ public sealed record MappingInspection
     /// <param name="blueprint">The blueprint to inspect.</param>
     /// <returns>A populated <see cref="MappingInspection"/>.</returns>
     public static MappingInspection Build(Blueprint blueprint)
+        => Build(blueprint, config: null);
+
+    /// <summary>
+    /// Sprint 9 · S9-T10 overload. Builds a <see cref="MappingInspection"/> that also reflects
+    /// the runtime state captured on <paramref name="config"/>: the concrete
+    /// <see cref="ActiveStrategy"/> chosen by the strategy chain, current
+    /// <see cref="PromotionState"/>, invocation count, and promotion error / timing if any.
+    /// </summary>
+    internal static MappingInspection Build(Blueprint blueprint, Runtime.ForgedSculptorConfiguration? config)
     {
         if (blueprint is null) throw new ArgumentNullException(nameof(blueprint));
 
@@ -83,11 +132,45 @@ public sealed record MappingInspection
         var trace = new List<string>(lines.Count);
         foreach (var l in lines) trace.Add(l.ToString());
 
+        // Sprint 9 · S9-T10 — overlay the runtime promotion view when a forged config is
+        // available. Reads are best-effort and non-allocating; missing data degrades to null.
+        MappingStrategy? activeStrategy = null;
+        Engine.Promotion.PromotionState? promotionState = null;
+        DateTimeOffset? promotedAt = null;
+        double? compileDurationMs = null;
+        Exception? promotionError = null;
+        long invocationCount = 0;
+
+        if (config is not null)
+        {
+            var pair = blueprint.TypePair;
+            if (config.ActiveStrategies.TryGetValue(pair, out var active))
+                activeStrategy = active;
+
+            if (config.AdaptivePromotion is { } mgr)
+            {
+                invocationCount = mgr.Counters.Read(pair);
+                if (mgr.TryGetRecord(pair) is { } record)
+                {
+                    promotionState = record.State;
+                    promotedAt = record.PromotedAt;
+                    compileDurationMs = record.CompileDurationMs;
+                    promotionError = record.LastError;
+                }
+            }
+        }
+
         return new MappingInspection
         {
             TypePair = blueprint.TypePair,
             Blueprint = blueprint,
             Strategy = blueprint.Strategy,
+            ActiveStrategy = activeStrategy,
+            PromotionState = promotionState,
+            LastPromotedAt = promotedAt,
+            PromotionCompileDurationMs = compileDurationMs,
+            PromotionError = promotionError,
+            InvocationCount = invocationCount,
             LinkCount = lines.Count,
             Links = lines,
             SkippedMembers = skipped,

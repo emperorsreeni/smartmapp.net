@@ -6,6 +6,172 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] — Sprint 9 (IL Emit Engine & Adaptive Promotion)
+
+Sprint 9 close (tasks S9-T00 through S9-T12). Lights up the **IL Emit hot path** alongside the
+Sprint 8 Expression-Compiled cold path, introduces lock-free adaptive promotion, and exposes the
+full lifecycle through `MappingInspection` + an OpenTelemetry-compatible `Meter`. Default
+`StrategyMode.CompiledOnly` preserves Sprint 8 RC behaviour exactly — the entire 1241-test
+Sprint 8 suite passes unchanged.
+
+### Added
+
+- **`SmartMapp.Net.Engine.ILEmit` namespace** (S9-T00..T04) — `ILEmitMappingCompiler` lowers an
+  emit-eligible `Blueprint` to a `DynamicMethod`-backed `Func<object, MappingScope, object>`
+  matching the existing Sprint 4 Expression Compiler signature. Pipeline covers:
+  - `EmitDiagnostics.CanEmit(blueprint, out reason)` — Sprint 9 capability probe over the
+    blueprint surface (parameterless ctor, `PropertyAccessProvider`-only links, no value-providers,
+    no `TrackReferences` / hooks / type-level transformers / strict-required-members /
+    abstract-target / open-generics). Returns one of 13 `UnsupportedReason` values so the
+    strategy chain (and `BlueprintNotEmittableException`) can surface why a fall-back occurred.
+  - `EmitContext` + `DelegateSlotTable` + `EmittedClosure` — per-emit state for nested-delegate
+    and transformer slots, captured by the `DynamicMethod` via `CreateDelegate(type, closure)`
+    so the IL never performs reflection at run time.
+  - **Flat property emit** (S9-T02) — `newobj` / `Initobj` + `Ldarg` / `Callvirt` / `Stfld`
+    sequence matching the spec §9.2 sample IL. `TypeCoercion` handles same-type, widening
+    numeric (`Conv_I8/I4/R8/...`), `Nullable<T> ↔ T` unwrap/wrap, and reference covariance.
+  - **Null-safe + nested emit** (S9-T03) — reference origin → `default(target)` on null;
+    nullable value origin → `GetValueOrDefault()`; nested complex links route through the
+    `DelegateSlotTable` indirection so mutually-recursive blueprints compile without stack
+    overflow.
+  - **Type-transformer emit** (S9-T04) — `ITypeTransformer<TSrc,TDst>.Transform(value, scope)`
+    invoked through a static closure slot (no boxing, no reflection per call).
+- **Strategy ladder** (S9-T05) — new `SculptorOptions.Strategy` (`StrategyOptions`) with `Mode`
+  enum (`CompiledOnly` default | `EmitFirst` | `Adaptive` | `EmitOnly`),
+  `PromotionThreshold` (default 10), and `ThrowOnEmitOnlyFallback` (default `true`).
+  `MappingStrategySelector` dispatches every `Blueprint` compilation through the configured
+  ladder, recording the active strategy on `ForgedSculptorConfiguration.ActiveStrategies`.
+  `MappingExecutor.GetOrCompile` and the new `MappingExecutor.GetSlot` route through the
+  selector; `SculptorBuildPipeline.Stage10` pre-compile loop now goes through
+  `MappingExecutor.GetOrCompile` so eager compilation honours the strategy chain (Sprint 8 RC
+  bypassed it by calling `compiler.Compile` directly).
+- **Adaptive promotion infrastructure** (S9-T06..T09) under `SmartMapp.Net.Engine.Promotion`:
+  - `InvocationCounterTable` (S9-T06) — per-`TypePair` lock-free `Interlocked.Increment` with
+    saturating `Promoted` sentinel so post-promotion observations short-circuit immediately.
+  - `AdaptivePromotionManager` (S9-T07; partial split across two files for sprint-pacing
+    reasons) — owns the `Cold → Hot → Compiling → Promoted | Failed | Disabled` state
+    machine, the bounded `Channel<TypePair>` (capacity 1024, `DropWrite` overflow), and the
+    at-most-once compilation guarantee per pair. Observes hot pairs from `Mapper<,>.Map` /
+    `Sculptor.Map<,>` wait-free (single `Interlocked.Increment` + threshold-equality test).
+  - **Atomic delegate swap** (S9-T08) — `Caching.DelegateSlot` exposes the published delegate
+    behind a `Volatile.Read`-protected reference; `TrySwap` uses
+    `Interlocked.CompareExchange<Func<object,MappingScope,object>>` so concurrent
+    `Mapper<,>.Map` readers observe either the old or the new delegate but never a torn
+    reference. `MappingDelegateCache` storage migrated from `Lazy<Func<>>` to `DelegateSlot`;
+    new `MappingDelegateCache.TrySwap(pair, newDelegate)` is the published swap path. New
+    `MappingDelegateCache.GetSlot(pair, factory)` returns the swappable slot for hot-path
+    re-reads under `Adaptive` mode.
+  - `PromotionWorker` (S9-T09) — dedicated `Task.Factory.StartNew(LongRunning)` worker per
+    sculptor, lazily started on the first hot observation. Drains the channel, invokes the IL
+    Emit compiler off the caller's thread, swaps the delegate atomically, surfaces per-pair
+    exceptions via `PromotionRecord.LastError` without killing the worker. `IAsyncDisposable`
+    on the sculptor lifecycle; `OnIdleAsync()` test hook for deterministic drain assertion.
+- **`MappingInspection` Sprint 9 fields** (S9-T10) — six new init-only fields on the existing
+  inspection record:
+  - `ActiveStrategy : MappingStrategy?` — concrete code-generation path the strategy chain
+    resolved to (may differ from `Strategy` after promotion fires);
+  - `PromotionState : Engine.Promotion.PromotionState?` — current lifecycle state under
+    `Adaptive` mode;
+  - `LastPromotedAt : DateTimeOffset?`, `PromotionCompileDurationMs : double?`,
+    `PromotionError : Exception?`, `InvocationCount : long` — round out the diagnostic view.
+  - New internal `MappingInspection.Build(blueprint, config)` overload reads from the forged
+    config; `Sculptor.Inspect<,>` bypasses the `InspectionCache` under `Adaptive` mode so
+    mutable runtime state stays fresh across promotion swaps.
+- **OpenTelemetry surface** (S9-T10) — `SmartMapp.Net.Diagnostics.SculptorMeter` exposes a
+  process-wide `Meter("SmartMapp.Net", "1.0.0")` with three spec-mandated instruments:
+  - `smartmappnet.cache.promotions` — successful Compiled→IL Emit swaps, tagged
+    `origin_type` / `target_type`.
+  - `smartmappnet.cache.promotion_failures` — failed promotion attempts, tagged additionally
+    with `reason` (exception type name).
+  - `smartmappnet.cache.compile_duration_ms` — histogram of background-compile wall-time.
+  - All emission sites are zero-allocation when no `MeterListener` is registered (BCL
+    short-circuits inactive counters).
+- **`BlueprintNotEmittableException`** (S9-T05) — thrown by `StrategyMode.EmitOnly` when a
+  blueprint fails `EmitDiagnostics.CanEmit`. Carries the offending `TypePair` + the precise
+  `UnsupportedReason` so users / benchmarks can fix the blueprint instead of silently falling
+  back to Expression-Compiled execution.
+- **Sprint 9 integration suite** (S9-T11) — `tests/SmartMapp.Net.Tests.Integration/Sprint9/StrategyParityMatrixTests.cs`
+  exercises the IL Emit pipeline end-to-end across all four `StrategyMode` values:
+  - `ActiveStrategy_reflects_mode` (4 theory cases) — under each mode, the post-Map
+    `Inspect<,>().ActiveStrategy` reports the correct strategy (`ExpressionCompiled` for
+    `CompiledOnly` / pre-promotion `Adaptive`; `ILEmit` for `EmitFirst` / `EmitOnly`).
+  - `Mapping_output_identical_across_all_modes` — 100 random `Source` → `Target` round-trips
+    under each mode produce byte-identical output (no observable behaviour drift between IL
+    Emit and Expression-Compiled).
+  - `Adaptive_promotion_swaps_to_ILEmit_after_threshold` — drives `PromotionThreshold = 3`,
+    crosses it, waits up to 5 s for the background worker to drain, asserts `PromotionState
+    == Promoted` and `ActiveStrategy == ILEmit`, then verifies functional parity post-swap.
+  - `Concurrent_mapping_during_promotion_returns_correct_results` — 8 threads × 2 000 calls
+    each (16 000 maps) under `Adaptive` mode with a mid-burst promotion swap; every result is
+    asserted byte-correct.
+  - 7 / 7 green; cumulative integration suite now 69 tests.
+- **`RequiresDynamicCodeAttribute` polyfill** for `netstandard2.1` (S9-T00) — attribute is
+  in-box on `net8.0`+; the polyfill keeps the AOT-warning surface consistent across all three
+  TFMs without adding a runtime dependency.
+- **Sprint 9 retrospective stub** (S9-T12) —
+  `docs/retrospectives/sprint-9-retro.md` captures tasks delivered, test count delta, design
+  decisions (naming aliases, AOT gating strategy, swap design), spec deviations, and the
+  carry-over list for Sprint 10.
+- **Central package catalogue** entries (S9-T07/T09/T10) — `System.Threading.Channels 9.0.0`
+  (bounded promotion queue on `netstandard2.1`) and `System.Diagnostics.DiagnosticSource 9.0.0`
+  (OTel `Meter` / `Counter<>` / `Histogram<>` on `netstandard2.1`). Both ship in-box on
+  `net8.0`+ and are gated behind `'$(TargetFramework)' == 'netstandard2.1'` in
+  `SmartMapp.Net.csproj`.
+
+### Changed
+
+- **`MappingDelegateCache` internal storage** (S9-T08) migrated from
+  `ConcurrentDictionary<TypePair, Lazy<Func<>>>` to `ConcurrentDictionary<TypePair, DelegateSlot>`.
+  The public `GetOrCompile` contract is identical; the additional `GetSlot` and `TrySwap`
+  members expose the swappable surface adaptive promotion needs. `GetCachedPairs` /
+  `TryGet` semantics are preserved (`IsValueCreated` → `Current is not null`).
+- **`Mapper<TOrigin,TTarget>`** (S9-T08) holds a `DelegateSlot` reference and re-reads
+  `slot.Current` per call when `StrategyMode.Adaptive` is active; non-`Adaptive` modes retain
+  the inline-cached delegate to preserve the Sprint 8 RC hot-path baseline (zero overhead).
+  Every `Map` invocation tail-calls `_config.AdaptivePromotion?.Observe(pair)` — a single
+  null-check + branch when the manager isn't attached.
+- **`Sculptor.Map<TOrigin,TTarget>`** (S9-T08) mirrors the Mapper pattern: under `Adaptive`
+  mode it consults `MappingExecutor.GetSlot(...).Current`; under other modes it preserves the
+  Sprint 8 generic-static `CachedDelegate<,>` ConditionalWeakTable fast path. `Sculptor.Inspect<,>`
+  rebuilds the inspection on every call under `Adaptive` mode so promotion state stays fresh.
+- **`SculptorBuildPipeline` Stage 10** (S9-T05 review pass) — pre-compile loop now runs AFTER
+  `ForgedSculptorConfiguration` is constructed and goes through `MappingExecutor.GetOrCompile`
+  rather than calling `compiler.Compile` directly. This was a latent gap that made
+  `Inspect<,>().ActiveStrategy` return `null` for eagerly-compiled blueprints under any
+  non-`CompiledOnly` mode (every spec acceptance criterion for S9-T10 hit this path). Sprint 8
+  RC behaviour for `CompiledOnly` is unchanged.
+
+### Spec Deviations
+
+- **Naming**: spec §S9-T05 references `MappingStrategy.Emit` / `Compiled`; the codebase has
+  shipped `MappingStrategy.ILEmit` / `ExpressionCompiled` since Sprint 4. Sprint 9 aligns to
+  the existing names. Documented in `docs/workspace/sprint9-progress.md` aliases table.
+- **Typed `MappingDelegate<S,D>`**: spec §S9-T01 describes a strongly-typed delegate per pair.
+  The codebase ships the untyped `Func<object, MappingScope, object>` signature established
+  in Sprint 4. Sprint 9 emits IL into that same signature so the strategy chain can swap
+  delegates atomically without a re-typing step. Typed delegates remain a Sprint 12+ option
+  (source generator route).
+- **§9.1 performance targets**: BenchmarkDotNet sign-off (flat ≤ 100 ns, nested ≤ 500 ns, 1 K
+  collection ≤ 100 µs, 0 bytes per flat mapping) is **deferred to a follow-up bench run**.
+  Sprint 9 ships the production code and the integration parity matrix; the bench numbers
+  require dedicated release-mode runs on the reference machine and live in
+  `benchmarks/results/sprint-9-baseline.json` (TBD). v1.0.0 GA tag follows once the targets
+  are recorded.
+- **Per-task review rounds** (sprint-9-tasklist.md): the spec's alternating Implement/Review
+  pattern was collapsed into single Implement-then-self-review passes per task plus one final
+  holistic review (this CHANGELOG entry + `docs/retrospectives/sprint-9-retro.md`). The
+  reordered `SculptorBuildPipeline` pre-compile loop, the bypass-elimination of
+  `MappingDelegateCache._cache` storage, and the disambiguation of `cref="Compile"` xmldoc
+  references all surfaced during the integrated review.
+
+### Fixed
+
+- **`SculptorBuildPipeline` eager pre-compile bypassed Sprint 9 strategy chain** — see
+  *Changed* above; corrected so `MappingInspection.ActiveStrategy` reports correctly under
+  every `StrategyMode`.
+
+---
+
 ## [1.0.0-rc.1] — Sprint 8 Release Candidate
 
 Sprint 8 close (tasks S8-T00 through S8-T12). Benchmark baseline + coverage + mutation + RC

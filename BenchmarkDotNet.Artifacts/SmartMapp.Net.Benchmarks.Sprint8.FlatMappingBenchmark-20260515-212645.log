@@ -1,0 +1,277 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 2 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\obj\Release\net10.0/" /p:OutDir="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0/" /p:OutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0/" in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828
+// command took 4.45 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:IntermediateOutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\obj\Release\net10.0/" /p:OutDir="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0/" /p:OutputPath="C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0/" --output "C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0/" in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828
+// command took 22.37 sec and exited with 0
+// ***** Done, took 00:00:26 (26.97 sec)   *****
+// Found 2 benchmarks:
+//   FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': Job-VOCQEQ(IterationCount=5, WarmupCount=3)
+//   FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': Job-VOCQEQ(IterationCount=5, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet 3e5e0ddd-e6bb-4697-84cc-aadc2ce29828.dll --anonymousPipes 676 668 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.FlatMappingBenchmark.Map_Warm --job "IterationCount=5, WarmupCount=3" --benchmarkId 0 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: Job-HLGRBI(IterationCount=5, WarmupCount=3)
+
+OverheadJitting  1: 1 op, 301100.00 ns, 301.1000 us/op
+WorkloadJitting  1: 1 op, 2115300.00 ns, 2.1153 ms/op
+
+OverheadJitting  2: 16 op, 394700.00 ns, 24.6688 us/op
+WorkloadJitting  2: 16 op, 408800.00 ns, 25.5500 us/op
+
+WorkloadPilot    1: 16 op, 8500.00 ns, 531.2500 ns/op
+WorkloadPilot    2: 32 op, 15400.00 ns, 481.2500 ns/op
+WorkloadPilot    3: 64 op, 19400.00 ns, 303.1250 ns/op
+WorkloadPilot    4: 128 op, 30600.00 ns, 239.0625 ns/op
+WorkloadPilot    5: 256 op, 55600.00 ns, 217.1875 ns/op
+WorkloadPilot    6: 512 op, 98100.00 ns, 191.6016 ns/op
+WorkloadPilot    7: 1024 op, 141200.00 ns, 137.8906 ns/op
+WorkloadPilot    8: 2048 op, 257500.00 ns, 125.7324 ns/op
+WorkloadPilot    9: 4096 op, 555500.00 ns, 135.6201 ns/op
+WorkloadPilot   10: 8192 op, 1386500.00 ns, 169.2505 ns/op
+WorkloadPilot   11: 16384 op, 2166300.00 ns, 132.2205 ns/op
+WorkloadPilot   12: 32768 op, 4453400.00 ns, 135.9070 ns/op
+WorkloadPilot   13: 65536 op, 9131400.00 ns, 139.3341 ns/op
+WorkloadPilot   14: 131072 op, 14444500.00 ns, 110.2028 ns/op
+WorkloadPilot   15: 262144 op, 27044400.00 ns, 103.1662 ns/op
+WorkloadPilot   16: 524288 op, 53186100.00 ns, 101.4444 ns/op
+WorkloadPilot   17: 1048576 op, 103803500.00 ns, 98.9947 ns/op
+WorkloadPilot   18: 2097152 op, 103842500.00 ns, 49.5160 ns/op
+WorkloadPilot   19: 4194304 op, 267287900.00 ns, 63.7264 ns/op
+WorkloadPilot   20: 8388608 op, 512978600.00 ns, 61.1518 ns/op
+
+OverheadWarmup   1: 8388608 op, 23232600.00 ns, 2.7695 ns/op
+OverheadWarmup   2: 8388608 op, 23661400.00 ns, 2.8207 ns/op
+OverheadWarmup   3: 8388608 op, 24002600.00 ns, 2.8613 ns/op
+OverheadWarmup   4: 8388608 op, 23963000.00 ns, 2.8566 ns/op
+OverheadWarmup   5: 8388608 op, 23864800.00 ns, 2.8449 ns/op
+OverheadWarmup   6: 8388608 op, 23790500.00 ns, 2.8360 ns/op
+OverheadWarmup   7: 8388608 op, 23548300.00 ns, 2.8072 ns/op
+OverheadWarmup   8: 8388608 op, 23771100.00 ns, 2.8337 ns/op
+OverheadWarmup   9: 8388608 op, 22244100.00 ns, 2.6517 ns/op
+
+OverheadActual   1: 8388608 op, 19721500.00 ns, 2.3510 ns/op
+OverheadActual   2: 8388608 op, 19798500.00 ns, 2.3602 ns/op
+OverheadActual   3: 8388608 op, 20055200.00 ns, 2.3908 ns/op
+OverheadActual   4: 8388608 op, 19725900.00 ns, 2.3515 ns/op
+OverheadActual   5: 8388608 op, 20169700.00 ns, 2.4044 ns/op
+OverheadActual   6: 8388608 op, 21437200.00 ns, 2.5555 ns/op
+OverheadActual   7: 8388608 op, 19521600.00 ns, 2.3272 ns/op
+OverheadActual   8: 8388608 op, 20013900.00 ns, 2.3858 ns/op
+OverheadActual   9: 8388608 op, 19577400.00 ns, 2.3338 ns/op
+OverheadActual  10: 8388608 op, 19531800.00 ns, 2.3284 ns/op
+OverheadActual  11: 8388608 op, 19495400.00 ns, 2.3240 ns/op
+OverheadActual  12: 8388608 op, 19834900.00 ns, 2.3645 ns/op
+OverheadActual  13: 8388608 op, 22324300.00 ns, 2.6613 ns/op
+OverheadActual  14: 8388608 op, 20211600.00 ns, 2.4094 ns/op
+OverheadActual  15: 8388608 op, 20216800.00 ns, 2.4100 ns/op
+
+WorkloadWarmup   1: 8388608 op, 429205300.00 ns, 51.1653 ns/op
+WorkloadWarmup   2: 8388608 op, 455299800.00 ns, 54.2760 ns/op
+WorkloadWarmup   3: 8388608 op, 524297000.00 ns, 62.5011 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 8388608 op, 604135700.00 ns, 72.0186 ns/op
+WorkloadActual   2: 8388608 op, 526008700.00 ns, 62.7051 ns/op
+WorkloadActual   3: 8388608 op, 529322700.00 ns, 63.1002 ns/op
+WorkloadActual   4: 8388608 op, 518581500.00 ns, 61.8197 ns/op
+WorkloadActual   5: 8388608 op, 556792600.00 ns, 66.3749 ns/op
+
+// AfterActualRun
+WorkloadResult   1: 8388608 op, 506173800.00 ns, 60.3406 ns/op
+WorkloadResult   2: 8388608 op, 509487800.00 ns, 60.7357 ns/op
+WorkloadResult   3: 8388608 op, 498746600.00 ns, 59.4552 ns/op
+WorkloadResult   4: 8388608 op, 536957700.00 ns, 64.0103 ns/op
+// GC:  165 0 0 2080374848 8388608
+// Threading:  0 0 8388608
+
+// AfterAll
+// Benchmark Process 60868 has exited with code 0.
+
+Mean = 61.135 ns, StdErr = 0.995 ns (1.63%), N = 4, StdDev = 1.990 ns
+Min = 59.455 ns, Q1 = 60.119 ns, Median = 60.538 ns, Q3 = 61.554 ns, Max = 64.010 ns
+IQR = 1.435 ns, LowerFence = 57.967 ns, UpperFence = 63.707 ns
+ConfidenceInterval = [48.276 ns; 73.995 ns] (CI 99.9%), Margin = 12.859 ns (21.03% of Mean)
+Skewness = 0.59, Kurtosis = 1.22, MValue = 2
+
+// ** Remained 1 (50.0%) benchmark(s) to run. Estimated finish 2026-05-15 21:27 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet 3e5e0ddd-e6bb-4697-84cc-aadc2ce29828.dll --anonymousPipes 1520 1532 --benchmarkName SmartMapp.Net.Benchmarks.Sprint8.FlatMappingBenchmark.Map_Warm --job ShortRun --benchmarkId 1 in C:\Workstation\Work\Contrib\opensource\smartmapp.net\benchmarks\SmartMapp.Net.Benchmarks\bin\Release\net10.0\3e5e0ddd-e6bb-4697-84cc-aadc2ce29828\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.14.0
+// Runtime=.NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+OverheadJitting  1: 1 op, 300000.00 ns, 300.0000 us/op
+WorkloadJitting  1: 1 op, 2085800.00 ns, 2.0858 ms/op
+
+OverheadJitting  2: 16 op, 399300.00 ns, 24.9563 us/op
+WorkloadJitting  2: 16 op, 415400.00 ns, 25.9625 us/op
+
+WorkloadPilot    1: 16 op, 6400.00 ns, 400.0000 ns/op
+WorkloadPilot    2: 32 op, 13400.00 ns, 418.7500 ns/op
+WorkloadPilot    3: 64 op, 19000.00 ns, 296.8750 ns/op
+WorkloadPilot    4: 128 op, 29700.00 ns, 232.0313 ns/op
+WorkloadPilot    5: 256 op, 65700.00 ns, 256.6406 ns/op
+WorkloadPilot    6: 512 op, 97900.00 ns, 191.2109 ns/op
+WorkloadPilot    7: 1024 op, 138800.00 ns, 135.5469 ns/op
+WorkloadPilot    8: 2048 op, 269500.00 ns, 131.5918 ns/op
+WorkloadPilot    9: 4096 op, 544100.00 ns, 132.8369 ns/op
+WorkloadPilot   10: 8192 op, 1379000.00 ns, 168.3350 ns/op
+WorkloadPilot   11: 16384 op, 2269300.00 ns, 138.5071 ns/op
+WorkloadPilot   12: 32768 op, 4737200.00 ns, 144.5679 ns/op
+WorkloadPilot   13: 65536 op, 9651400.00 ns, 147.2687 ns/op
+WorkloadPilot   14: 131072 op, 14137100.00 ns, 107.8575 ns/op
+WorkloadPilot   15: 262144 op, 27739900.00 ns, 105.8193 ns/op
+WorkloadPilot   16: 524288 op, 63913200.00 ns, 121.9048 ns/op
+WorkloadPilot   17: 1048576 op, 70938000.00 ns, 67.6517 ns/op
+WorkloadPilot   18: 2097152 op, 108912000.00 ns, 51.9333 ns/op
+WorkloadPilot   19: 4194304 op, 237824200.00 ns, 56.7017 ns/op
+WorkloadPilot   20: 8388608 op, 511241600.00 ns, 60.9447 ns/op
+
+OverheadWarmup   1: 8388608 op, 27231500.00 ns, 3.2462 ns/op
+OverheadWarmup   2: 8388608 op, 27336100.00 ns, 3.2587 ns/op
+OverheadWarmup   3: 8388608 op, 27219100.00 ns, 3.2448 ns/op
+OverheadWarmup   4: 8388608 op, 27607400.00 ns, 3.2911 ns/op
+OverheadWarmup   5: 8388608 op, 27571600.00 ns, 3.2868 ns/op
+
+OverheadActual   1: 8388608 op, 27563900.00 ns, 3.2859 ns/op
+OverheadActual   2: 8388608 op, 27650000.00 ns, 3.2961 ns/op
+OverheadActual   3: 8388608 op, 27585900.00 ns, 3.2885 ns/op
+OverheadActual   4: 8388608 op, 27927800.00 ns, 3.3293 ns/op
+OverheadActual   5: 8388608 op, 28978400.00 ns, 3.4545 ns/op
+OverheadActual   6: 8388608 op, 28013800.00 ns, 3.3395 ns/op
+OverheadActual   7: 8388608 op, 26976500.00 ns, 3.2158 ns/op
+OverheadActual   8: 8388608 op, 29595000.00 ns, 3.5280 ns/op
+OverheadActual   9: 8388608 op, 29707700.00 ns, 3.5414 ns/op
+OverheadActual  10: 8388608 op, 26024400.00 ns, 3.1024 ns/op
+OverheadActual  11: 8388608 op, 25362100.00 ns, 3.0234 ns/op
+OverheadActual  12: 8388608 op, 25494200.00 ns, 3.0391 ns/op
+OverheadActual  13: 8388608 op, 25595300.00 ns, 3.0512 ns/op
+OverheadActual  14: 8388608 op, 26286900.00 ns, 3.1336 ns/op
+OverheadActual  15: 8388608 op, 25283000.00 ns, 3.0140 ns/op
+OverheadActual  16: 8388608 op, 27054000.00 ns, 3.2251 ns/op
+OverheadActual  17: 8388608 op, 26758800.00 ns, 3.1899 ns/op
+OverheadActual  18: 8388608 op, 25358000.00 ns, 3.0229 ns/op
+
+WorkloadWarmup   1: 8388608 op, 526351400.00 ns, 62.7460 ns/op
+WorkloadWarmup   2: 8388608 op, 529991000.00 ns, 63.1799 ns/op
+WorkloadWarmup   3: 8388608 op, 589557200.00 ns, 70.2807 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 8388608 op, 567713600.00 ns, 67.6767 ns/op
+WorkloadActual   2: 8388608 op, 626884500.00 ns, 74.7305 ns/op
+WorkloadActual   3: 8388608 op, 692614500.00 ns, 82.5661 ns/op
+
+// AfterActualRun
+WorkloadResult   1: 8388608 op, 540698350.00 ns, 64.4563 ns/op
+WorkloadResult   2: 8388608 op, 599869250.00 ns, 71.5100 ns/op
+WorkloadResult   3: 8388608 op, 665599250.00 ns, 79.3456 ns/op
+// GC:  165 0 0 2080374848 8388608
+// Threading:  0 0 8388608
+
+// AfterAll
+// Benchmark Process 62384 has exited with code 0.
+
+Mean = 71.771 ns, StdErr = 4.300 ns (5.99%), N = 3, StdDev = 7.448 ns
+Min = 64.456 ns, Q1 = 67.983 ns, Median = 71.510 ns, Q3 = 75.428 ns, Max = 79.346 ns
+IQR = 7.445 ns, LowerFence = 56.816 ns, UpperFence = 86.595 ns
+ConfidenceInterval = [-64.110 ns; 207.652 ns] (CI 99.9%), Margin = 135.881 ns (189.33% of Mean)
+Skewness = 0.03, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 0 (0.0%) benchmark(s) to run. Estimated finish 2026-05-15 21:27 (0h 0m from now) **
+Successfully reverted power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\SmartMapp.Net.Benchmarks.Sprint8.FlatMappingBenchmark-report.csv
+  BenchmarkDotNet.Artifacts\results\SmartMapp.Net.Benchmarks.Sprint8.FlatMappingBenchmark-report-github.md
+  BenchmarkDotNet.Artifacts\results\SmartMapp.Net.Benchmarks.Sprint8.FlatMappingBenchmark-report.html
+
+// * Detailed results *
+FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': Job-VOCQEQ(IterationCount=5, WarmupCount=3)
+Runtime = .NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 61.135 ns, StdErr = 0.995 ns (1.63%), N = 4, StdDev = 1.990 ns
+Min = 59.455 ns, Q1 = 60.119 ns, Median = 60.538 ns, Q3 = 61.554 ns, Max = 64.010 ns
+IQR = 1.435 ns, LowerFence = 57.967 ns, UpperFence = 63.707 ns
+ConfidenceInterval = [48.276 ns; 73.995 ns] (CI 99.9%), Margin = 12.859 ns (21.03% of Mean)
+Skewness = 0.59, Kurtosis = 1.22, MValue = 2
+-------------------- Histogram --------------------
+[58.450 ns ; 61.741 ns) | @@@
+[61.741 ns ; 65.656 ns) | @
+---------------------------------------------------
+
+FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2; GC = Concurrent Workstation
+Mean = 71.771 ns, StdErr = 4.300 ns (5.99%), N = 3, StdDev = 7.448 ns
+Min = 64.456 ns, Q1 = 67.983 ns, Median = 71.510 ns, Q3 = 75.428 ns, Max = 79.346 ns
+IQR = 7.445 ns, LowerFence = 56.816 ns, UpperFence = 86.595 ns
+ConfidenceInterval = [-64.110 ns; 207.652 ns] (CI 99.9%), Margin = 135.881 ns (189.33% of Mean)
+Skewness = 0.03, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[61.205 ns ; 74.761 ns) | @@
+[74.761 ns ; 86.124 ns) | @
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.8246)
+Unknown processor
+.NET SDK 10.0.204
+  [Host]     : .NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2
+  Job-VOCQEQ : .NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2
+  ShortRun   : .NET 10.0.8 (10.0.826.23019), X64 RyuJIT AVX2
+
+WarmupCount=3  
+
+| Method                                | Job        | IterationCount | LaunchCount | Mean     | Error     | StdDev   | Ratio | RatioSD | Gen0   | Allocated | Alloc Ratio |
+|-------------------------------------- |----------- |--------------- |------------ |---------:|----------:|---------:|------:|--------:|-------:|----------:|------------:|
+| 'ISculptor.Map<Flat, FlatDto> — warm' | Job-VOCQEQ | 5              | Default     | 61.14 ns |  12.86 ns | 1.990 ns |  1.00 |    0.04 | 0.0197 |     248 B |        1.00 |
+|                                       |            |                |             |          |           |          |       |         |        |           |             |
+| 'ISculptor.Map<Flat, FlatDto> — warm' | ShortRun   | 3              | 1           | 71.77 ns | 135.88 ns | 7.448 ns |  1.01 |    0.13 | 0.0197 |     248 B |        1.00 |
+
+// * Hints *
+Outliers
+  FlatMappingBenchmark.'ISculptor.Map<Flat, FlatDto> — warm': IterationCount=5, WarmupCount=3 -> 1 outlier  was  removed (72.02 ns)
+
+// * Legends *
+  Mean        : Arithmetic mean of all measurements
+  Error       : Half of 99.9% confidence interval
+  StdDev      : Standard deviation of all measurements
+  Ratio       : Mean of the ratio distribution ([Current]/[Baseline])
+  RatioSD     : Standard deviation of the ratio distribution ([Current]/[Baseline])
+  Gen0        : GC Generation 0 collects per 1000 operations
+  Allocated   : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  Alloc Ratio : Allocated memory ratio distribution ([Current]/[Baseline])
+  1 ns        : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:00:13 (13.73 sec), executed benchmarks: 2
+
+Global total time: 00:00:40 (40.91 sec), executed benchmarks: 2
+// * Artifacts cleanup *
+Artifacts cleanup is finished

@@ -1,3 +1,4 @@
+using SmartMapp.Net.Caching;
 using SmartMapp.Net.Runtime;
 
 namespace SmartMapp.Net;
@@ -12,19 +13,37 @@ namespace SmartMapp.Net;
 public sealed class Mapper<TOrigin, TTarget> : IMapper<TOrigin, TTarget>
 {
     private readonly ForgedSculptorConfiguration _config;
-    private readonly Func<object, MappingScope, object> _delegate;
+
+    // Sprint 8 RC fast path: cached delegate when adaptive promotion is OFF (CompiledOnly /
+    // EmitFirst / EmitOnly). Zero overhead vs Sprint 8 baseline.
+    private readonly Func<object, MappingScope, object>? _delegate;
+
+    // Sprint 9 · S9-T08 slot-aware path: when adaptive promotion is ON we hold the swappable
+    // DelegateSlot and re-read it per call so the IL-emitted replacement (published by the
+    // promotion worker) becomes visible immediately.
+    private readonly DelegateSlot? _slot;
+    private readonly TypePair _pair;
 
     internal Mapper(ForgedSculptorConfiguration config)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
 
-        var pair = TypePair.Of<TOrigin, TTarget>();
-        if (_config.TryGetBlueprint(pair) is null)
+        _pair = TypePair.Of<TOrigin, TTarget>();
+        if (_config.TryGetBlueprint(_pair) is null)
         {
-            throw MappingExecutor.BuildUnknownPairException(_config, pair);
+            throw MappingExecutor.BuildUnknownPairException(_config, _pair);
         }
 
-        _delegate = MappingExecutor.GetOrCompile(_config, pair);
+        if (_config.Options.Strategy.Mode == Configuration.StrategyMode.Adaptive)
+        {
+            _slot = MappingExecutor.GetSlot(_config, _pair);
+            _delegate = null;
+        }
+        else
+        {
+            _delegate = MappingExecutor.GetOrCompile(_config, _pair);
+            _slot = null;
+        }
     }
 
     /// <inheritdoc />
@@ -32,7 +51,10 @@ public sealed class Mapper<TOrigin, TTarget> : IMapper<TOrigin, TTarget>
     {
         if (origin is null) return default!;
         var scope = MappingExecutor.CreateScope(_config);
-        return (TTarget)_delegate(origin, scope)!;
+        var del = _slot is null ? _delegate! : _slot.Current!;
+        var result = (TTarget)del(origin, scope)!;
+        _config.AdaptivePromotion?.Observe(_pair);
+        return result;
     }
 
     /// <inheritdoc />

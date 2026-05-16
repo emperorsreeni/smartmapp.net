@@ -26,6 +26,9 @@
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
     <PackageReference Include="System.Collections.Immutable" />
     <PackageReference Include="System.Text.Json" />
+    <!-- Sprint 9 · S9-T07/T09 promotion queue + S9-T10 OTel meter surface — in-box on net8.0+. -->
+    <PackageReference Include="System.Threading.Channels" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>
 
 </Project>

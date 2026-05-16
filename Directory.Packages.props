@@ -19,6 +19,12 @@
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0" />
     <PackageVersion Include="System.Collections.Immutable" Version="9.0.0" />
     <PackageVersion Include="System.Text.Json" Version="9.0.0" />
+    <!-- Sprint 9 · S9-T07 / S9-T09: System.Threading.Channels for the bounded promotion queue
+         + S9-T10: System.Diagnostics.DiagnosticSource for the OpenTelemetry-compatible Meter
+         surface (Meter, Counter<T>, Histogram<T>). Both ship in-box on net8.0+ — only
+         netstandard2.1 needs the package references (gated below in SmartMapp.Net.csproj). -->
+    <PackageVersion Include="System.Threading.Channels" Version="9.0.0" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

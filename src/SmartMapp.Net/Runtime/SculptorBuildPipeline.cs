@@ -176,14 +176,6 @@ internal sealed class SculptorBuildPipeline
             transformerLookup: (o, t) => transformerRegistry.GetTransformer(o, t),
             inheritanceResolver: inputs.BlueprintBuilderImpl.ResolvedInheritanceResolver);
 
-        if (!inputs.Options.Throughput.LazyBlueprintCompilation)
-        {
-            foreach (var bp in mergedBlueprints)
-            {
-                _ = delegateCache.GetOrCompile(bp.TypePair, _ => compiler.Compile(bp));
-            }
-        }
-
         // Stage 9 — Validate (post-merge so convention links count toward strict-mode coverage)
         if (inputs.Options.ValidateOnStartup)
         {
@@ -197,7 +189,12 @@ internal sealed class SculptorBuildPipeline
                 throw new BlueprintValidationException(validation);
         }
 
-        // Stage 10 — Build the forged configuration and return the sculptor
+        // Stage 10 — Build the forged configuration and return the sculptor.
+        // Pre-compile (when LazyBlueprintCompilation is off) is deferred until AFTER the config
+        // exists so it flows through MappingExecutor.GetOrCompile → MappingStrategySelector,
+        // populating ActiveStrategies and (under Adaptive mode) wiring the promotion manager.
+        // Sprint 8 RC pre-compiled directly via compiler.Compile which bypassed the Sprint 9
+        // strategy chain — that broke MappingInspection.ActiveStrategy reporting (S9-T10).
         var config = new ForgedSculptorConfiguration(
             blueprints: mergedBlueprints,
             options: inputs.Options,
@@ -206,6 +203,14 @@ internal sealed class SculptorBuildPipeline
             compiler: compiler,
             transformerRegistry: transformerRegistry,
             compositionBlueprints: compositionBlueprints);
+
+        if (!inputs.Options.Throughput.LazyBlueprintCompilation)
+        {
+            foreach (var bp in mergedBlueprints)
+            {
+                _ = MappingExecutor.GetOrCompile(config, bp.TypePair);
+            }
+        }
 
         return new Sculptor(config);
     }

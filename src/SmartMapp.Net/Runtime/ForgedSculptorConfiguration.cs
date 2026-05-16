@@ -59,6 +59,30 @@ internal sealed class ForgedSculptorConfiguration
     internal TypeTransformerRegistry TransformerRegistry { get; }
 
     /// <summary>
+    /// The per-pair concrete <see cref="MappingStrategy"/> actually chosen by the Sprint 9
+    /// strategy chain (S9-T05). Populated lazily on first compile; consulted by
+    /// <see cref="Diagnostics.MappingInspection"/> and telemetry counters (S9-T10) so the
+    /// inspection surface reflects the active code-generation path (which may differ from
+    /// <c>Blueprint.Strategy</c> when adaptive promotion has fired).
+    /// </summary>
+    internal System.Collections.Concurrent.ConcurrentDictionary<TypePair, MappingStrategy> ActiveStrategies { get; } = new();
+
+    /// <summary>
+    /// Lazily-attached adaptive-promotion manager (S9-T07). <c>null</c> when
+    /// <see cref="SculptorOptions.Strategy"/>.<c>Mode</c> is not <c>Adaptive</c>; otherwise
+    /// constructed once by the strategy chain on first compile and observed by every subsequent
+    /// <c>Mapper&lt;,&gt;.Map</c> invocation via the per-pair invocation counter (S9-T06).
+    /// </summary>
+    internal Engine.Promotion.AdaptivePromotionManager? AdaptivePromotion { get; set; }
+
+    /// <summary>
+    /// Strategy chain singleton attached lazily by <see cref="MappingExecutor"/>. Held on the
+    /// configuration so the same selector instance is observed across <c>MappingExecutor</c>
+    /// reentrant calls during nested-mapping compilation.
+    /// </summary>
+    internal Engine.MappingStrategySelector? StrategySelector { get; set; }
+
+    /// <summary>
     /// Composition blueprints registered via <c>Compose&lt;T&gt;().FromOrigin&lt;O&gt;()</c>.
     /// Consumed by <see cref="CompositionDispatcher"/> at runtime when
     /// <c>ISculptor.Compose&lt;T&gt;(params object[])</c> is invoked with multiple origins.

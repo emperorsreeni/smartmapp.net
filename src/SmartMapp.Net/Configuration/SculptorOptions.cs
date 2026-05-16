@@ -27,7 +27,15 @@ public sealed class SculptorOptions
         Nulls = new NullOptions(this);
         Throughput = new ThroughputOptions(this);
         Logging = new LoggingOptions(this);
+        Strategy = new StrategyOptions(this);
     }
+
+    /// <summary>
+    /// Gets the Sprint 9 strategy-ladder configuration (IL Emit vs Expression-Compiled,
+    /// adaptive promotion, threshold). Defaults to <see cref="StrategyMode.CompiledOnly"/>
+    /// which preserves Sprint 8 RC behaviour.
+    /// </summary>
+    public StrategyOptions Strategy { get; }
 
     /// <summary>
     /// Gets the convention configuration.

@@ -172,6 +172,26 @@ public class OrderBlueprint : MappingBlueprint
 
 
 
+## Interactive Notebooks
+
+Nine [Polyglot Notebooks](https://github.com/dotnet/interactive) under [`notebooks/`](notebooks/) — one per v1.0 sprint plus a cross-cutting regression guard — exercise every feature cluster interactively. Open any notebook in **VS Code** with the *.NET Interactive Notebooks* extension and click **Run All**. See [`notebooks/README.md`](notebooks/README.md) for prerequisites.
+
+| # | Notebook | Focus |
+|---|---|---|
+| 1 | [`sprint-01-core-api.ipynb`](notebooks/sprint-01-core-api.ipynb) | `TypePair`, `SculptorBuilder` → `Forge()`, `ISculptor.Map`, `IMapper<S,D>`, `Blueprint`, `MappingScope`. |
+| 2 | [`sprint-02-conventions.ipynb`](notebooks/sprint-02-conventions.ipynb) | Exact-name, flattening, unflattening, prefix-dropping, case-normalization, method-to-property. |
+| 3 | [`sprint-03-type-transformers.ipynb`](notebooks/sprint-03-type-transformers.ipynb) | `ParsableTransformer`, `DateTime*`, `Enum`, `Base64` + custom `ITypeTransformer<TFrom, TTo>`. |
+| 4 | [`sprint-04-construction-and-graph.ipynb`](notebooks/sprint-04-construction-and-graph.ipynb) | Records / init-only ctors, `BuildWith(factory)`, nested recursion, `TrackReferences()`, `DepthLimit(n)`. |
+| 5 | [`sprint-05-collections.ipynb`](notebooks/sprint-05-collections.ipynb) | `MapAll`, arrays / `List<T>` / `HashSet<T>`, `Dictionary<K,V>`, immutables, nested collections. |
+| 6 | [`sprint-06-polymorphism-and-blueprints.ipynb`](notebooks/sprint-06-polymorphism-and-blueprints.ipynb) | `ExtendWith<,>`, `Materialize<TConcrete>()`, `InheritFrom<,>`, reusable `MappingBlueprint` classes. |
+| 7 | [`sprint-07-attributes-validation-diagnostics.ipynb`](notebooks/sprint-07-attributes-validation-diagnostics.ipynb) | `[MappedBy<T>]` / `[Unmapped]` / `[LinkedFrom]`, `Inspect<S,D>()`, `MappingAtlas` + DOT, `Validate()`. |
+| 8 | [`sprint-08-di-projection-compose.ipynb`](notebooks/sprint-08-di-projection-compose.ipynb) | `AddSculptor`, DI-resolved `IValueProvider<,,>`, env-aware `ValidateOnStartup`, `SelectAs<T>`, `MapTo<T>`, `Compose<T>`. |
+| — | [`99-acceptance-tests.ipynb`](notebooks/99-acceptance-tests.ipynb) | Assertion-driven regression guard — throws if any v1.0 acceptance behaviour regresses. |
+
+> Build the repo once with `dotnet build --configuration Release` before running any notebook — the `#r` directives pin Release `net10.0` outputs.
+
+
+
 ## Packages
 
 | Package | Description |

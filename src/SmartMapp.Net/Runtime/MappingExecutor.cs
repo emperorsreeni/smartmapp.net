@@ -19,7 +19,41 @@ internal static class MappingExecutor
         {
             var bp = config.TryGetBlueprint(pair)
                 ?? throw BuildUnknownPairException(config, pair);
-            return config.Compiler.Compile(bp);
+
+            // Sprint 9 · S9-T05: route every compile through the strategy chain so
+            // StrategyMode.{EmitFirst,Adaptive,EmitOnly} can swap IL Emit in transparently.
+            // The default StrategyMode.CompiledOnly preserves Sprint 8 RC behaviour exactly.
+            var selector = config.StrategySelector ??= new Engine.MappingStrategySelector(config);
+            if (config.AdaptivePromotion is null
+                && config.Options.Strategy.Mode == Configuration.StrategyMode.Adaptive)
+            {
+                config.AdaptivePromotion = new Engine.Promotion.AdaptivePromotionManager(config);
+            }
+            return selector.Compile(bp);
+        });
+    }
+
+    /// <summary>
+    /// Sprint 9 · S9-T08 slot accessor. Returns the swappable <see cref="Caching.DelegateSlot"/>
+    /// for <paramref name="pair"/>, initialising it via the strategy chain on first access.
+    /// Used by <see cref="Mapper{TOrigin, TTarget}"/> and <see cref="Sculptor"/> under
+    /// <see cref="Configuration.StrategyMode.Adaptive"/> so adaptive-promotion swaps are
+    /// observed without re-resolving from the cache on every <c>Map</c> call.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static Caching.DelegateSlot GetSlot(ForgedSculptorConfiguration config, TypePair pair)
+    {
+        return config.DelegateCache.GetSlot(pair, _ =>
+        {
+            var bp = config.TryGetBlueprint(pair)
+                ?? throw BuildUnknownPairException(config, pair);
+            var selector = config.StrategySelector ??= new Engine.MappingStrategySelector(config);
+            if (config.AdaptivePromotion is null
+                && config.Options.Strategy.Mode == Configuration.StrategyMode.Adaptive)
+            {
+                config.AdaptivePromotion = new Engine.Promotion.AdaptivePromotionManager(config);
+            }
+            return selector.Compile(bp);
         });
     }
 

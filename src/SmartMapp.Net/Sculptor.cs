@@ -41,9 +41,24 @@ public sealed class Sculptor : ISculptor, ISculptorConfiguration
     public TTarget Map<TOrigin, TTarget>(TOrigin origin)
     {
         if (origin is null) return default!;
-        var del = CachedDelegate<TOrigin, TTarget>.GetOrResolve(_config);
         var scope = MappingExecutor.CreateScope(_config);
-        return (TTarget)del(origin!, scope)!;
+        // Sprint 9 · S9-T08: under StrategyMode.Adaptive the delegate slot may be swapped at
+        // any moment by the promotion worker, so we re-resolve from the executor (one dict
+        // lookup) per call rather than caching the delegate inline. Other modes preserve the
+        // Sprint 8 RC fast path via the generic-static CachedDelegate cache.
+        Func<object, MappingScope, object> del;
+        var pair = TypePair.Of<TOrigin, TTarget>();
+        if (_config.Options.Strategy.Mode == SmartMapp.Net.Configuration.StrategyMode.Adaptive)
+        {
+            del = MappingExecutor.GetSlot(_config, pair).Current!;
+        }
+        else
+        {
+            del = CachedDelegate<TOrigin, TTarget>.GetOrResolve(_config);
+        }
+        var result = (TTarget)del(origin!, scope)!;
+        _config.AdaptivePromotion?.Observe(pair);
+        return result;
     }
 
     /// <inheritdoc />
@@ -198,13 +213,18 @@ public sealed class Sculptor : ISculptor, ISculptorConfiguration
     public MappingInspection Inspect<TOrigin, TTarget>()
     {
         var pair = TypePair.Of<TOrigin, TTarget>();
-        return _config.InspectionCache.GetOrAdd(pair, p =>
-        {
-            var bp = _config.TryGetBlueprint(p)
-                ?? throw new MappingConfigurationException(
-                    $"Cannot inspect: no blueprint registered for type pair '{p}'.", p);
-            return MappingInspection.Build(bp);
-        });
+        var bp = _config.TryGetBlueprint(pair)
+            ?? throw new MappingConfigurationException(
+                $"Cannot inspect: no blueprint registered for type pair '{pair}'.", pair);
+
+        // Sprint 9 · S9-T10: under StrategyMode.Adaptive the inspection result reflects mutable
+        // runtime state (PromotionState, InvocationCount, ActiveStrategy after swap), so we
+        // bypass the InspectionCache and rebuild on every call. Other modes preserve the
+        // Sprint 8 RC cache-once behaviour because their state is immutable post-forge.
+        if (_config.AdaptivePromotion is not null)
+            return MappingInspection.Build(bp, _config);
+
+        return _config.InspectionCache.GetOrAdd(pair, _ => MappingInspection.Build(bp, _config));
     }
 
     /// <inheritdoc />
